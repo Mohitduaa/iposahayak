@@ -160,9 +160,9 @@ export default function IPODashboard() {
           style={styles.scrollView}
           data={listData}
           keyExtractor={(ipo, index) => `${ipo.id}-${index}`}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <View style={styles.listRow}>
-              <IPOCard ipo={item} />
+              <IPOCard ipo={item} index={index} />
             </View>
           )}
           refreshControl={

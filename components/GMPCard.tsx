@@ -7,7 +7,11 @@ import {
   useColorScheme,
 } from 'react-native';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GMPDetailsModal } from '@/components/GMPDetailsModal';
+
+// Only the first screenful cascades in; see IPOCard for why
+const STAGGERED_CARDS = 8;
 
 interface GMPCardProps {
   data: {
@@ -22,9 +26,11 @@ interface GMPCardProps {
     allotmentDate?: string;
     listingDate?: string;
   };
+  /** Position in its list, for the staggered entrance. */
+  index?: number;
 }
 
-export function GMPCard({ data }: GMPCardProps) {
+export function GMPCard({ data, index = 0 }: GMPCardProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [showDetails, setShowDetails] = useState(false);
@@ -44,7 +50,12 @@ export function GMPCard({ data }: GMPCardProps) {
 
   return (
     <>
-      <TouchableOpacity style={styles.container} onPress={() => setShowDetails(true)}>
+      <Animated.View
+        entering={
+          index < STAGGERED_CARDS ? FadeInDown.duration(260).delay(index * 45) : undefined
+        }
+      >
+      <TouchableOpacity style={styles.container} onPress={() => setShowDetails(true)} activeOpacity={0.9}>
       <View style={styles.header}>
         <Text style={styles.companyName} numberOfLines={1}>
           {data.companyName || 'N/A'}
@@ -101,6 +112,7 @@ export function GMPCard({ data }: GMPCardProps) {
         )}
       </View>
     </TouchableOpacity>
+      </Animated.View>
 
       <GMPDetailsModal
         data={data}

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSavedPANs } from '@/hooks/useSavedPANs';
 import { useAllotmentCheck } from '@/hooks/useAllotmentCheck';
@@ -77,7 +78,7 @@ export default function AllotmentResultScreen() {
 
   const styles = getStyles(isDark);
 
-  const renderRow = ({ item }: { item: AllotmentStatus }) => {
+  const renderRow = ({ item, index }: { item: AllotmentStatus; index: number }) => {
     const allotted = item.status === 'allotted';
     const noRecord = item.status === 'no_record';
     const label = allotted ? 'Allotted' : noRecord ? 'No record' : 'Not allotted';
@@ -100,6 +101,9 @@ export default function AllotmentResultScreen() {
     ];
 
     return (
+      <Animated.View
+        entering={index < 10 ? FadeInDown.duration(240).delay(index * 40) : undefined}
+      >
       <TouchableOpacity
         style={styles.row}
         activeOpacity={0.7}
@@ -146,6 +150,7 @@ export default function AllotmentResultScreen() {
           </View>
         )}
       </TouchableOpacity>
+      </Animated.View>
     );
   };
 

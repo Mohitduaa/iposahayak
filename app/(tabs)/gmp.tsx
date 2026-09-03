@@ -110,7 +110,7 @@ export default function GMPTracker() {
             <Text style={styles.sectionTitle}>Top Gainers</Text>
           </View>
           {displayTopGainers.map((item, index) => (
-            <GMPCard key={`gainer-${index}`} data={item} />
+            <GMPCard key={`gainer-${index}`} data={item} index={index} />
           ))}
         </View>
 
@@ -122,7 +122,7 @@ export default function GMPTracker() {
               <Text style={styles.sectionTitle}>Top Losers</Text>
             </View>
             {displayTopLosers.map((item, index) => (
-              <GMPCard key={`loser-${index}`} data={item} />
+              <GMPCard key={`loser-${index}`} data={item} index={index} />
             ))}
           </View>
         )}
@@ -134,7 +134,7 @@ export default function GMPTracker() {
             <Text style={styles.sectionTitle}>All IPOs GMP</Text>
           </View>
           {displayGMPData.map((item, index) => (
-            <GMPCard key={`all-${index}`} data={item} />
+            <GMPCard key={`all-${index}`} data={item} index={index} />
           ))}
         </View>
       </ScrollView>

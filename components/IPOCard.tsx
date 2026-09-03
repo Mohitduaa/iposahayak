@@ -18,12 +18,24 @@ import * as Sharing from 'expo-sharing';
 import { WebView } from 'react-native-webview';
 import { IPO } from '@/types';
 import { IPODetailsModal } from '@/components/IPODetailsModal';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+
+// Only the first screenful cascades in. Beyond that a card is entering because
+// the list scrolled, and a fresh animation on every scroll reads as flicker.
+const STAGGERED_CARDS = 8;
 
 interface IPOCardProps {
   ipo: IPO;
+  /** Position in the list, for the staggered entrance. */
+  index?: number;
 }
 
-export function IPOCard({ ipo }: IPOCardProps) {
+export function IPOCard({ ipo, index = 0 }: IPOCardProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [showDetails, setShowDetails] = useState(false);
@@ -143,12 +155,37 @@ export function IPOCard({ ipo }: IPOCardProps) {
 
   const hasRibbon = Boolean(ipo.listedToday || ipo.allotmentToday);
 
+  // A slight settle under the finger, so a tap feels acknowledged before the
+  // sheet opens
+  const pressed = useSharedValue(1);
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressed.value }],
+  }));
+
   const styles = getStyles(isDark);
 
   return (
     <>
       <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
-        <TouchableOpacity style={styles.container} onPress={() => setShowDetails(true)}>
+        <Animated.View
+          entering={
+            index < STAGGERED_CARDS
+              ? FadeInDown.duration(260).delay(index * 45)
+              : undefined
+          }
+          style={pressStyle}
+        >
+        <TouchableOpacity
+          style={styles.container}
+          onPress={() => setShowDetails(true)}
+          onPressIn={() => {
+            pressed.value = withSpring(0.98, { damping: 18, stiffness: 260 });
+          }}
+          onPressOut={() => {
+            pressed.value = withSpring(1, { damping: 18, stiffness: 260 });
+          }}
+          activeOpacity={0.9}
+        >
           {/* A corner ribbon rather than another pill among the badges: it is
               true for one day only, so it should read before anything else on
               the card. Its top-right radius matches the card's so it sits
@@ -314,6 +351,7 @@ export function IPOCard({ ipo }: IPOCardProps) {
             </Text>
           </View>
         </TouchableOpacity>
+        </Animated.View>
       </ViewShot>
 
       <IPODetailsModal ipo={ipo} visible={showDetails} onClose={() => setShowDetails(false)} />
