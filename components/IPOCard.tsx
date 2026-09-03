@@ -166,21 +166,7 @@ export function IPOCard({ ipo }: IPOCardProps) {
               <Text style={styles.companyName} numberOfLines={1}>
                 {ipo.companyName || ''}
               </Text>
-              <View style={styles.subRow}>
-                <Text style={styles.category}>{ipo.category || ''}</Text>
-                {/* Why this row is at the top of the Allotment tab. The API
-                    works both out; the card only reports them. */}
-                {ipo.listedToday && (
-                  <View style={[styles.todayTag, styles.listedTag]}>
-                    <Text style={styles.listedTagText}>Listed today</Text>
-                  </View>
-                )}
-                {!ipo.listedToday && ipo.allotmentToday && (
-                  <View style={[styles.todayTag, styles.allotmentTag]}>
-                    <Text style={styles.allotmentTagText}>Allotment today</Text>
-                  </View>
-                )}
-              </View>
+              <Text style={styles.category}>{ipo.category || ''}</Text>
             </View>
 
             <View style={{ alignItems: 'flex-end' }}>
@@ -198,6 +184,19 @@ export function IPOCard({ ipo }: IPOCardProps) {
                   {getStatusText(ipo.status)}
                 </Text>
               </View>
+
+              {/* Sits under the status badge because both answer the same
+                  question — where this issue stands today. Beside the board
+                  name it was next to a fact that never changes. */}
+              {ipo.listedToday ? (
+                <View style={[styles.todayTag, styles.listedTag]}>
+                  <Text style={styles.todayTagText}>LISTED TODAY</Text>
+                </View>
+              ) : ipo.allotmentToday ? (
+                <View style={[styles.todayTag, styles.allotmentTag]}>
+                  <Text style={styles.todayTagText}>ALLOTMENT TODAY</Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
@@ -396,16 +395,23 @@ const getStyles = (isDark: boolean) =>
       marginLeft: 'auto',
       padding: 8,
     },
-    subRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+    // Solid rather than tinted like the status badge above it: this is true
+    // for one day only, so it should be the thing the eye lands on.
     todayTag: {
+      alignSelf: 'flex-end',
       paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 10,
+      paddingVertical: 3,
+      borderRadius: 6,
+      marginTop: 6,
     },
-    listedTag: { backgroundColor: isDark ? 'rgba(139,92,246,0.18)' : '#EDE9FE' },
-    listedTagText: { fontSize: 11, fontWeight: '700', color: '#8B5CF6' },
-    allotmentTag: { backgroundColor: isDark ? 'rgba(245,158,11,0.18)' : '#FEF3C7' },
-    allotmentTagText: { fontSize: 11, fontWeight: '700', color: '#F59E0B' },
+    listedTag: { backgroundColor: '#DC2626' },
+    allotmentTag: { backgroundColor: '#F59E0B' },
+    todayTagText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      letterSpacing: 0.4,
+    },
     statusBadge: {
       alignSelf: 'flex-start',
       paddingHorizontal: 8,
