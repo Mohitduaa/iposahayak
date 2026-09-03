@@ -17,6 +17,10 @@ interface GMPCardProps {
     percentage?: number;
     kostak?: number;
     subject?: number;
+    openDate?: string;
+    closeDate?: string;
+    allotmentDate?: string;
+    listingDate?: string;
   };
 }
 
@@ -43,43 +47,54 @@ export function GMPCard({ data }: GMPCardProps) {
       <TouchableOpacity style={styles.container} onPress={() => setShowDetails(true)}>
       <View style={styles.header}>
         <Text style={styles.companyName} numberOfLines={1}>
-          {data.companyName}
+          {data.companyName || 'N/A'}
         </Text>
         <View style={styles.changeContainer}>
           {getTrendIcon()}
           <Text style={[styles.changeText, { color: changeColor }]}>
-            {isPositive ? '+' : ''}{data.change}
+            {isPositive ? '+' : ''}{data.change || 0}
           </Text>
         </View>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.gmpSection}>
-          <Text style={styles.gmpLabel}>GMP</Text>
-          <Text style={styles.gmpValue}>₹{data.gmp}</Text>
-        </View>
+        <View style={styles.content}>
+          <View style={styles.gmpContainer}>
+            <View style={styles.gmpSection}>
+              <Text style={styles.gmpLabel}>GMP</Text>
+              <Text style={styles.gmpValue}>₹{data.gmp || 0}</Text>
+            </View>
+            {(data as any).isLive && (
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>LIVE</Text>
+              </View>
+            )}
+          </View>
 
         {data.percentage !== undefined && (
           <View style={styles.percentageSection}>
-            <Text style={styles.percentageLabel}>Change</Text>
+            {/* The premium as a share of the issue price — the listing gain it
+                implies. It was labelled "Change", which reads as a move since
+                yesterday and is a different number entirely. */}
+            <Text style={styles.percentageLabel}>Est. listing gain</Text>
             <Text style={[styles.percentageValue, { color: changeColor }]}>
-              {isPositive ? '+' : ''}{data.percentage.toFixed(1)}%
+              {isPositive ? '+' : ''}{(data.percentage || 0).toFixed(1)}%
             </Text>
           </View>
         )}
 
         {(data.kostak !== undefined || data.subject !== undefined) && (
           <View style={styles.additionalInfo}>
-            {data.kostak !== undefined && (
+            {/* {data.kostak !== undefined && (
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>Kostak</Text>
                 <Text style={styles.infoValue}>₹{data.kostak}</Text>
               </View>
-            )}
-            {data.subject !== undefined && (
+            )} */}
+            {data.subject !== undefined && data.subject > 0 && (
               <View style={styles.infoItem}>
-                <Text style={styles.infoLabel}>Subject</Text>
-                <Text style={styles.infoValue}>₹{data.subject}</Text>
+                <Text style={styles.infoLabel}>Sub. Profit</Text>
+                <Text style={styles.infoValue}>₹{data.subject.toLocaleString('en-IN')}</Text>
               </View>
             )}
           </View>
@@ -136,6 +151,33 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  gmpContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF4444',
   },
   gmpSection: {
     alignItems: 'flex-start',

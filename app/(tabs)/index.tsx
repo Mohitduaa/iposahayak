@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Calendar, TrendingUp, Users, Clock, Crown, Search } from 'lucide-react-native';
+import { Calendar, TrendingUp, Clock, Search } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { IPOCard } from '@/components/IPOCard';
 import { StatsCard } from '@/components/StatsCard';
@@ -144,12 +144,6 @@ export default function IPODashboard() {
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>IPO Dashboard</Text>
           <Text style={styles.headerSubtitle}>Track live and upcoming IPOs</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.premiumButton}>
-            <Crown size={20} color="#F59E0B" />
-            <Text style={styles.premiumText}>Premium</Text>
-          </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.searchIconCorner} onPress={() => router.push('/search')}>
           <Search size={24} color={isDark ? '#94A3B8' : '#64748B'} />
@@ -338,7 +332,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingBottom: 20,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -359,7 +352,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   // No horizontal padding here: the header block brings its own, and each row
   // is padded individually so both line up.
   listContent: {
-    paddingBottom: 120,
+    paddingBottom: 24,
   },
   listRow: {
     paddingHorizontal: 16,

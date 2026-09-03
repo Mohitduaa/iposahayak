@@ -35,13 +35,9 @@ export default function AlertsScreen() {
           <Text style={styles.headerTitle}>Alerts</Text>
           <Text style={styles.headerSubtitle}>Manage your notifications</Text>
         </View>
-        <TouchableOpacity style={styles.premiumButton}>
-          <Crown size={20} color="#F59E0B" />
-          <Text style={styles.premiumText}>Premium</Text>
-        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Notification Settings */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notification Settings</Text>
@@ -57,7 +53,7 @@ export default function AlertsScreen() {
             <Switch
               value={pushNotifications}
               onValueChange={setPushNotifications}
-              trackColor={{ false: '#374151', true: '#60A5FA' }}
+              trackColor={{ false: '#374151', true: '#1E40AF' }}
               thumbColor={pushNotifications ? '#FFFFFF' : '#9CA3AF'}
             />
           </View>
@@ -115,7 +111,7 @@ export default function AlertsScreen() {
               <Text style={styles.infoItem}>• Listing Date Reminders</Text>
               <Text style={styles.infoItem}>• Subscription Status Updates</Text>
               <Text style={[styles.infoItem, styles.premiumItem]}>
-                • Expert Analysis (Premium)
+                • Expert Analysis
               </Text>
             </View>
           </View>
@@ -173,7 +169,9 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingBottom: 120,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   section: {
     marginHorizontal: 16,

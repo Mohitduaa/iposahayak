@@ -246,7 +246,13 @@ export async function refreshData() {
       // Only what these screens show. The closed tab has its own paginated
       // endpoint, so pulling all 300-odd closed records here was downloading
       // roughly 600 records to display fourteen.
-      const data = await fetchJson<{ ipos?: any[] }>(apiUrl('/upcoming-ipos?status=upcoming,live'));
+      //
+      // dated=true drops the issues still marked TBA. They are announced, but
+      // a card has no dates, price band or lot size to show for them, so they
+      // read as broken rows rather than as upcoming IPOs.
+      const data = await fetchJson<{ ipos?: any[] }>(
+        apiUrl('/upcoming-ipos?status=upcoming,live&dated=true')
+      );
       const list = data?.ipos || [];
 
       // Keep whatever is cached if the request failed outright

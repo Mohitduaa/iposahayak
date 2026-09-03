@@ -1,149 +1,203 @@
-import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GMPData } from '@/types';
+import { useEffect, useState } from 'react';
+import { apiUrl, fetchJson } from '@/services/api';
 
-interface GMPChartData {
-  labels: string[];
-  datasets: [{
-    data: number[];
-    strokeWidth?: number;
-  }];
-}
+// ---------------------------------------------------------------------------
+// Grey market premium, shared by the GMP tab and the global provider.
+//
+// The hook was called from both, and each copy fetched every upcoming IPO and
+// every closed one — around 600 records — then did it again every two minutes.
+// It also decided for itself which issues were open, using the same
+// assume-the-current-year date parsing that put last year's issues on the
+// screen. The API answers both questions now, so this asks it for the fourteen
+// records the screen actually shows.
+// ---------------------------------------------------------------------------
 
-interface IPOApiResponse {
-  name: string;
-  gmp: string;
-  price: string;
-  gain: string;
-  date: string;
-  subject: string;
-  type: string;
-}
-
-interface GMPEntry {
+export interface GMPRow {
   companyName: string;
   gmp: number;
+  issuePrice: number;
+  /** GMP as a share of the issue price — the listing gain the premium implies. */
+  gmpPercent: number;
+  subject: number;
+  lotSize: number;
+  isLive: boolean;
+  status: string;
+  dateRange: string;
+  allotmentDate: string;
+  listingDate: string;
+  /** Kept for older screens that read `change`. */
   change: number;
   percentage: number;
   kostak: number;
-  subject: number;
 }
 
-const CACHE_KEY = 'gmp_data_cache';
-const CACHE_EXPIRY_MINUTES = 5;
+type ChartData = { labels: string[]; datasets: { data: number[]; strokeWidth?: number }[] };
 
-export function useGMPData(timeRange: '7d' | '1m' | '3m' | '1y') {
-  const [gmpData, setGMPData] = useState<GMPEntry[]>([]);
-  const [chartData, setChartData] = useState<GMPChartData>({ labels: [], datasets: [{ data: [] }] });
-  const [topGainers, setTopGainers] = useState<GMPEntry[]>([]);
-  const [topLosers, setTopLosers] = useState<GMPEntry[]>([]);
+type Store = {
+  gmpData: GMPRow[];
+  chartData: ChartData;
+  topGainers: GMPRow[];
+  topLosers: GMPRow[];
+  loading: boolean;
+};
 
-  const isCacheExpired = (timestamp: number) => {
-    const now = Date.now();
-    return (now - timestamp) / (1000 * 60) > CACHE_EXPIRY_MINUTES;
-  };
+const REFRESH_MINUTES = 2;
 
-  const loadFromCache = async () => {
-    try {
-      const cache = await AsyncStorage.getItem(CACHE_KEY);
-      if (cache) {
-        const parsed = JSON.parse(cache);
-        if (!isCacheExpired(parsed.timestamp)) {
-          applyGMP(parsed.data);
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to load GMP cache:', err);
-    }
-  };
+let store: Store = {
+  gmpData: [],
+  chartData: { labels: [], datasets: [{ data: [] }] },
+  topGainers: [],
+  topLosers: [],
+  loading: false,
+};
 
-  const applyGMP = (data: IPOApiResponse[]) => {
-    const transformed: GMPEntry[] = data.map(item => {
-      const parsedChange = parseGain(item.gain);
+const listeners = new Set<(s: Store) => void>();
+let inFlight: Promise<void> | null = null;
+let timer: ReturnType<typeof setInterval> | null = null;
+let started = false;
+
+function setStore(patch: Partial<Store>) {
+  store = { ...store, ...patch };
+  listeners.forEach((listener) => listener(store));
+}
+
+function parseRupee(value: any): number {
+  if (typeof value === 'number') return value;
+  if (typeof value !== 'string') return 0;
+  const cleaned = value.replace(/[₹,]/g, '').trim();
+  if (!cleaned || cleaned === '-') return 0;
+  const parsed = parseFloat(cleaned);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+/** Upper end of "₹168 to ₹177", or the plain price when there is no band. */
+function upperPrice(item: any): number {
+  const band = String(item.priceRange || '');
+  const numbers = band.match(/\d+(\.\d+)?/g);
+  if (numbers && numbers.length) return parseFloat(numbers[numbers.length - 1]);
+  return parseRupee(item.price);
+}
+
+/** Short enough for a chart axis, but still recognisable. */
+function shortLabel(name: string): string {
+  const first = String(name || '').split(' ')[0];
+  return first.length > 8 ? `${first.slice(0, 8)}…` : first;
+}
+
+function buildRows(items: any[]): GMPRow[] {
+  return items
+    .filter((item) => item?.name)
+    .map((item) => {
+      const gmp = parseRupee(item.gmp);
+      const issuePrice = upperPrice(item);
+      const lotSize = parseInt(String(item.lotSize || '').replace(/,/g, ''), 10) || 0;
+
+      // What one lot is worth at the grey market premium
+      const subject =
+        item.subject && item.subject !== '0' && item.subject !== ''
+          ? parseRupee(item.subject)
+          : gmp * lotSize;
+
+      // The premium as a percentage of the issue price. This is the number a
+      // GMP screen is really about — a ₹28 premium means very different things
+      // on a ₹59 issue and on a ₹1,080 one, so ranking by rupees alone put the
+      // most expensive shares on top rather than the strongest premiums.
+      const gmpPercent = issuePrice > 0 ? (gmp / issuePrice) * 100 : 0;
 
       return {
         companyName: item.name,
-        gmp: parseRupee(item.gmp),
-        change: parsedChange,
-        percentage: parsedChange,
+        gmp,
+        issuePrice,
+        gmpPercent: Math.round(gmpPercent * 10) / 10,
+        subject,
+        lotSize,
+        isLive: String(item.status || '').toLowerCase() === 'live',
+        status: item.status || '',
+        dateRange: item.date || '',
+        allotmentDate: item.allotmentDate || '',
+        listingDate: item.listingDate || '',
+        change: Math.round(gmpPercent * 10) / 10,
+        percentage: Math.round(gmpPercent * 10) / 10,
         kostak: 0,
-        subject: parseRupee(item.subject),
       };
     });
+}
 
-    setGMPData(transformed);
+export async function refreshGMPData() {
+  if (inFlight) return inFlight;
 
-    const mockChartData: GMPChartData = {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      datasets: [{
-        data: transformed.slice(0, 7).map((item) => item.gmp),
-        strokeWidth: 2,
-      }],
-    };
-    setChartData(mockChartData);
-
-    const gainers = transformed
-      .filter(item => item.change > 0)
-      .sort((a, b) => b.change - a.change)
-      .slice(0, 3);
-
-    const losers = transformed
-      .filter(item => item.gmp <= 10)
-      .sort((a, b) => a.gmp - b.gmp)
-      .slice(0, 3);
-
-    setTopGainers(gainers);
-    setTopLosers(losers);
-  };
-
-  const fetchGMPData = async () => {
+  inFlight = (async () => {
     try {
-      const res = await fetch('https://rechat.sbs/upcoming-ipos');
-      const json = await res.json();
+      setStore({ loading: store.gmpData.length === 0 });
 
-      const data: IPOApiResponse[] = json.ipos?.slice(1) || [];
+      // A premium only exists while an issue is open or still to come; once it
+      // has listed there is nothing left to quote.
+      const data = await fetchJson<{ ipos?: any[] }>(
+        apiUrl('/upcoming-ipos?status=upcoming,live&dated=true')
+      );
+      if (!data) return;
 
-      // Update state
-      applyGMP(data);
+      const rows = buildRows(data.ipos || []);
 
-      // Cache it
-      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
-        timestamp: Date.now(),
-        data,
-      }));
+      // Open issues first, then the ones with the strongest premium
+      const ranked = [...rows].sort((a, b) => {
+        if (a.isLive !== b.isLive) return a.isLive ? -1 : 1;
+        return b.gmpPercent - a.gmpPercent;
+      });
+
+      const forChart = ranked.filter((row) => row.gmp > 0).slice(0, 6);
+
+      setStore({
+        gmpData: ranked,
+        chartData: {
+          labels: forChart.map((row) => shortLabel(row.companyName)),
+          datasets: [{ data: forChart.map((row) => row.gmp), strokeWidth: 2 }],
+        },
+        // Gainers and losers are ranked by the premium itself, not by which
+        // share happens to cost more. An issue quoted at zero has no premium
+        // yet — it is not a loser, and listing three of them under "Top
+        // Losers" said something about them that the data does not.
+        topGainers: ranked.filter((row) => row.gmpPercent > 0).slice(0, 5),
+        topLosers: rows
+          .filter((row) => row.gmpPercent < 0)
+          .sort((a, b) => a.gmpPercent - b.gmpPercent)
+          .slice(0, 5),
+      });
     } catch (error) {
-      console.error('Failed to fetch GMP data:', error);
+      console.error('Error fetching GMP data:', error);
+    } finally {
+      setStore({ loading: false });
+      inFlight = null;
     }
-  };
+  })();
+
+  return inFlight;
+}
+
+export function useGMPData(_timeRange?: string) {
+  const [snapshot, setSnapshot] = useState<Store>(store);
 
   useEffect(() => {
-    loadFromCache();      // instant
-    fetchGMPData();       // silent refresh
+    listeners.add(setSnapshot);
+    setSnapshot(store);
 
-    const interval = setInterval(() => {
-      fetchGMPData();
-    }, CACHE_EXPIRY_MINUTES * 60 * 1000);
+    if (!started) {
+      started = true;
+      refreshGMPData();
+      timer = setInterval(() => refreshGMPData(), REFRESH_MINUTES * 60 * 1000);
+    }
 
-    return () => clearInterval(interval);
-  }, [timeRange]);
+    return () => {
+      listeners.delete(setSnapshot);
+    };
+  }, []);
 
   return {
-    gmpData,
-    chartData,
-    topGainers,
-    topLosers,
+    gmpData: snapshot.gmpData,
+    chartData: snapshot.chartData,
+    topGainers: snapshot.topGainers,
+    topLosers: snapshot.topLosers,
+    loading: snapshot.loading,
+    refreshGMPData,
   };
-}
-
-// Fixes invalid gain strings like '-%' or '-'
-function parseGain(value: string): number {
-  const cleaned = value.replace('%', '').trim();
-  if (cleaned === '-' || cleaned === '') return 0;
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : parsed;
-}
-
-function parseRupee(value: string): number {
-  if (!value || value.trim() === '₹-' || value === '-') return 0;
-  return parseInt(value.replace(/[₹,]/g, '')) || 0;
 }

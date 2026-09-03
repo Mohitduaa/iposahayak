@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  ActivityIndicator,
   useColorScheme,
-  Dimensions,
 } from 'react-native';
 import { X, Calendar, TrendingUp, Users, Crown, Building, DollarSign, Target, Clock } from 'lucide-react-native';
 import { IPO } from '@/types';
+import { apiUrl, fetchJson } from '@/services/api';
 
 interface IPODetailsModalProps {
   ipo: IPO;
@@ -18,11 +19,71 @@ interface IPODetailsModalProps {
   onClose: () => void;
 }
 
-const screenWidth = Dimensions.get('window').width;
+/** Everything the list response leaves out, fetched when the sheet opens. */
+interface FullIPO {
+  about?: string;
+  subject?: string;
+  detailUrl?: string;
+  subscriptionCategories?: { category?: string; subscription?: string }[];
+  sections?: { title?: string; headers?: string[]; rows?: string[][] }[];
+  analysis?: {
+    highlights?: { label: string; value: string; note?: string }[];
+    paragraphs?: string[];
+    strengths?: string[];
+    risks?: string[];
+  } | null;
+}
+
+const isObjectId = (value: string) => /^[0-9a-fA-F]{24}$/.test(value || '');
 
 export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const [full, setFull] = useState<FullIPO | null>(null);
+  const [loadingFull, setLoadingFull] = useState(false);
+
+  // The list endpoint strips the write-up, the analysis and the scraped data
+  // blocks to keep the payload small, so the sheet asks for the whole record
+  // once it is actually opened.
+  useEffect(() => {
+    if (!visible || !isObjectId(ipo.id)) {
+      setFull(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingFull(true);
+
+    (async () => {
+      const data = await fetchJson<{ ipo?: FullIPO }>(apiUrl(`/upcoming-ipos/${ipo.id}`));
+      if (cancelled) return;
+      setFull(data?.ipo || null);
+      setLoadingFull(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, ipo.id]);
+
+  const categories = (full?.subscriptionCategories || []).filter(
+    (row) => row?.category || row?.subscription
+  );
+
+  // Only the tables an applicant actually needs, in the order they are useful.
+  // The record also carries the generated analysis, the company write-up,
+  // financials, KPIs and peer tables; those belong on the website, not in a
+  // sheet someone opens to check a lot size.
+  const WANTED_SECTIONS = [
+    /^ipo details$/i,
+    /reservation/i,
+    /lot size/i,
+    /^company address$/i,
+  ];
+
+  const sections = (full?.sections || []).filter((section) =>
+    WANTED_SECTIONS.some((pattern) => pattern.test(String(section?.title || '')))
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -172,8 +233,27 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
             </View>
           </View>
 
+          {/* Category-wise figures straight from the exchange table */}
+          {categories.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Category-wise Subscription</Text>
+              <View style={styles.subscriptionTable}>
+                <View style={styles.subscriptionRow}>
+                  <Text style={styles.subscriptionLabel}>Category</Text>
+                  <Text style={styles.subscriptionLabel}>Times subscribed</Text>
+                </View>
+                {categories.map((row, index) => (
+                  <View style={styles.subscriptionRow} key={`${row.category}-${index}`}>
+                    <Text style={styles.subscriptionCategory}>{row.category || '—'}</Text>
+                    <Text style={styles.subscriptionValue}>{row.subscription || '—'}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
           {/* The live figures, shown only once bidding has produced some */}
-          {ipo.hasSubscriptionData && (
+          {ipo.hasSubscriptionData && categories.length === 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Subscription</Text>
               <View style={styles.subscriptionTable}>
@@ -210,30 +290,71 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
           )}
 
           {/* Additional Details */}
-          <View style={[styles.section, styles.lastSection]}>
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Additional Details</Text>
             <View style={styles.detailsList}>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Total Issue Size</Text>
                 <Text style={styles.detailValue}>{ipo.totalIssueSize}</Text>
-                
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Face Value</Text>
-                <Text style={styles.detailValue}>₹{ipo.faceValue}</Text>
+                <Text style={styles.detailValue}>{ipo.faceValue ? `₹${ipo.faceValue}` : '—'}</Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Price Range</Text>
-                <Text style={styles.detailValue}>{ipo.priceRange}</Text>
+                <Text style={styles.detailValue}>{ipo.priceRange || '—'}</Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Registrar</Text>
-                <Text style={styles.detailValue}>
-                  {ipo.registrar}
-                </Text>
+                <Text style={styles.detailValue}>{ipo.registrar || '—'}</Text>
               </View>
+              {!!full?.subject && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Subject</Text>
+                  <Text style={styles.detailValue}>{full.subject}</Text>
+                </View>
+              )}
             </View>
           </View>
+
+          {loadingFull && (
+            <View style={styles.inlineLoader}>
+              <ActivityIndicator size="small" color="#3B82F6" />
+            </View>
+          )}
+
+          {/* Issue details, reservation, lot distribution and the address */}
+          {sections.map((section, index) => (
+            <View style={styles.section} key={`${section.title}-${index}`}>
+              <Text style={styles.sectionTitle}>{section.title || 'Details'}</Text>
+              <View style={styles.subscriptionTable}>
+                {(section.headers || []).length > 0 && (
+                  <View style={styles.subscriptionRow}>
+                    {(section.headers || []).map((header, headerIndex) => (
+                      <Text style={styles.subscriptionLabel} key={headerIndex} numberOfLines={2}>
+                        {header}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+                {(section.rows || []).map((row, rowIndex) => (
+                  <View style={styles.subscriptionRow} key={rowIndex}>
+                    {row.map((cell, cellIndex) => (
+                      <Text
+                        key={cellIndex}
+                        style={cellIndex === 0 ? styles.subscriptionCategory : styles.subscriptionValue}
+                      >
+                        {cell}
+                      </Text>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
+
+          <View style={styles.lastSection} />
         </ScrollView>
       </View>
     </Modal>
@@ -295,9 +416,14 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
+  // Sized against the row it sits in, not against the screen. The old
+  // minWidth was half the window width measured once at import, so inside a
+  // sheet narrower than the window two cards never fitted on a line and every
+  // one of them stretched to full width.
   statCard: {
-    flex: 1,
-    minWidth: (screenWidth - 64) / 2,
+    flexGrow: 1,
+    flexBasis: '47%',
+    minWidth: 130,
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     padding: 16,
     borderRadius: 12,
@@ -397,6 +523,37 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
+  },
+  inlineLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  paragraph: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: isDark ? '#CBD5E1' : '#475569',
+    marginTop: 12,
+  },
+  pointsBlock: {
+    marginTop: 14,
+  },
+  pointsHeading: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: isDark ? '#F1F5F9' : '#1E293B',
+    marginBottom: 6,
+  },
+  pointPositive: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#10B981',
+    marginBottom: 4,
+  },
+  pointNegative: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#EF4444',
+    marginBottom: 4,
   },
   lastSection: {
     marginBottom: 40,

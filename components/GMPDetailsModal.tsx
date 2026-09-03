@@ -7,7 +7,6 @@ import {
   Modal,
   ScrollView,
   useColorScheme,
-  Dimensions,
 } from 'react-native';
 import { X, TrendingUp, TrendingDown, Minus, ChartBar as BarChart3, Target, DollarSign } from 'lucide-react-native';
 
@@ -19,12 +18,37 @@ interface GMPDetailsModalProps {
     percentage?: number;
     kostak?: number;
     subject?: number;
+    openDate?: string;
+    closeDate?: string;
+    allotmentDate?: string;
+    listingDate?: string;
   };
   visible: boolean;
   onClose: () => void;
 }
 
-const screenWidth = Dimensions.get('window').width;
+
+const formatDate = (dateString: string) => {
+  if (!dateString || dateString === 'Will be announced soon') {
+    return 'TBA';
+  }
+  
+  // Handle formats like "15 Jan" by adding current year
+  if (dateString.match(/^\d{1,2}\s+[A-Za-z]{3}$/)) {
+    dateString = `${dateString} ${new Date().getFullYear()}`;
+  }
+  
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return dateString; // Return original if can't parse
+  }
+  
+  return date.toLocaleDateString('en-IN', { 
+    day: '2-digit', 
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 export function GMPDetailsModal({ data, visible, onClose }: GMPDetailsModalProps) {
   const colorScheme = useColorScheme();
@@ -41,14 +65,7 @@ export function GMPDetailsModal({ data, visible, onClose }: GMPDetailsModalProps
       <TrendingDown size={24} color="#EF4444" />;
   };
 
-  // Mock historical data for demonstration
-  const historicalData = [
-    { date: '2024-01-15', gmp: 20, change: 0 },
-    { date: '2024-01-16', gmp: 22, change: 2 },
-    { date: '2024-01-17', gmp: 25, change: 3 },
-    { date: '2024-01-18', gmp: 23, change: -2 },
-    { date: '2024-01-19', gmp: data.gmp, change: data.change },
-  ];
+
 
   const styles = getStyles(isDark);
 
@@ -85,7 +102,7 @@ export function GMPDetailsModal({ data, visible, onClose }: GMPDetailsModalProps
             <Text style={styles.sectionTitle}>Current Market Data</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <DollarSign size={20} color="#60A5FA" />
+<Text style={{ fontSize: 20, color: '#10B981', fontWeight: 'bold' }}>₹</Text>
                 <Text style={styles.statLabel}>GMP</Text>
                 <Text style={[styles.statValue, { color: changeColor }]}>₹{data.gmp}</Text>
               </View>
@@ -96,48 +113,24 @@ export function GMPDetailsModal({ data, visible, onClose }: GMPDetailsModalProps
                   {isPositive ? '+' : ''}₹{data.change}
                 </Text>
               </View>
-              {data.kostak !== undefined && (
+              {/* {data.kostak !== undefined && (
                 <View style={styles.statCard}>
                   <Target size={20} color="#F59E0B" />
                   <Text style={styles.statLabel}>Kostak</Text>
                   <Text style={styles.statValue}>₹{data.kostak}</Text>
                 </View>
-              )}
-              {data.subject !== undefined && (
+              )} */}
+              {data.subject !== undefined && data.subject > 0 && (
                 <View style={styles.statCard}>
                   <BarChart3 size={20} color="#8B5CF6" />
-                  <Text style={styles.statLabel}>Subject</Text>
-                  <Text style={styles.statValue}>₹{data.subject}</Text>
+                  <Text style={styles.statLabel}>Subject Profit</Text>
+                  <Text style={styles.statValue}>₹{data.subject.toLocaleString('en-IN')}</Text>
                 </View>
               )}
             </View>
           </View>
 
-          {/* Historical Trend */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Trend (5 Days)</Text>
-            <View style={styles.trendContainer}>
-              {historicalData.map((item, index) => (
-                <View key={index} style={styles.trendItem}>
-                  <Text style={styles.trendDate}>
-                    {new Date(item.date).toLocaleDateString('en-IN', { 
-                      day: '2-digit', 
-                      month: 'short' 
-                    })}
-                  </Text>
-                  <View style={styles.trendData}>
-                    <Text style={styles.trendGMP}>₹{item.gmp}</Text>
-                    <Text style={[
-                      styles.trendChange,
-                      { color: item.change > 0 ? '#10B981' : item.change < 0 ? '#EF4444' : '#6B7280' }
-                    ]}>
-                      {item.change > 0 ? '+' : ''}{item.change}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
+          
 
           {/* Market Analysis */}
           <View style={styles.section}>
@@ -239,7 +232,10 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    minWidth: (screenWidth - 64) / 2,
+    // Sized against its row rather than against a window width measured once
+    // at import, so it holds up on a tablet, in split screen and on rotation.
+    flexBasis: '47%',
+    minWidth: 130,
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     padding: 16,
     borderRadius: 12,
@@ -258,14 +254,14 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
   },
-  trendContainer: {
+  timelineContainer: {
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: isDark ? '#334155' : '#E2E8F0',
     overflow: 'hidden',
   },
-  trendItem: {
+  timelineItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -273,23 +269,14 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: isDark ? '#334155' : '#F1F5F9',
   },
-  trendDate: {
+  timelineLabel: {
     fontSize: 14,
     color: isDark ? '#94A3B8' : '#64748B',
   },
-  trendData: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  trendGMP: {
-    fontSize: 16,
+  timelineValue: {
+    fontSize: 14,
     fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
-  },
-  trendChange: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   analysisCard: {
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',

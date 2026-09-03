@@ -13,18 +13,25 @@ import { StatusBar } from 'expo-status-bar';
 import { Crown, Search, Plus } from 'lucide-react-native';
 import { useSavedPANs } from '@/hooks/useSavedPANs';
 import { useAllotmentCheck } from '@/hooks/useAllotmentCheck';
-import { useIPOData } from '@/hooks/useIPOData';
 import { IPOSelector } from '@/components/IPOSelector';
 import { SavedPANSelector } from '@/components/SavedPANSelector';
 import { AddPANModal } from '@/components/AddPANModal';
 import { AllotmentResultsModal } from '@/components/AllotmentResultsModal';
+import { CustomTabBar } from '@/components/CustomTabBar';
 import { AllotmentStatus } from '@/types';
+
+type RegistrarType = 'MUFGL' | 'BIGSHARE';
 
 export default function AllotmentScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  
-  const [selectedIPOId, setSelectedIPOId] = useState<string>('');
+
+  const [selectedIPO, setSelectedIPO] = useState<{ id: string; companyType: RegistrarType | ''; name?: string }>({
+    id: '',
+    companyType: '',
+    name: '',
+  });
+
   const [showAddPANModal, setShowAddPANModal] = useState(false);
   const [editingPAN, setEditingPAN] = useState<{ pan: string; name: string } | undefined>(undefined);
   const [allotmentResults, setAllotmentResults] = useState<AllotmentStatus[]>([]);
@@ -32,12 +39,9 @@ export default function AllotmentScreen() {
 
   const { savedPANs, addPAN, removePAN, updatePANName } = useSavedPANs();
   const { checkAllotment, loading } = useAllotmentCheck();
-  const { ipos } = useIPOData();
-
-  const selectedIPO = ipos.find(ipo => ipo.id === selectedIPOId);
 
   const handleCheckAllotment = async () => {
-    if (!selectedIPOId) {
+    if (!selectedIPO.id || !selectedIPO.companyType) {
       Alert.alert('Error', 'Please select an IPO first.');
       return;
     }
@@ -47,8 +51,14 @@ export default function AllotmentScreen() {
       return;
     }
 
-    const pansToCheck = savedPANs.map(p => p.pan);
-    const results = await checkAllotment(pansToCheck, selectedIPOId);
+    const pansToCheck = savedPANs.map((p) => p.pan);
+
+    const results = await checkAllotment(
+      pansToCheck,
+      selectedIPO.id,
+      selectedIPO.companyType as RegistrarType
+    );
+
     setAllotmentResults(results);
     setShowResultsModal(true);
   };
@@ -71,23 +81,19 @@ export default function AllotmentScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style={isDark ? "light" : "dark"} />
-      
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Allotment Status</Text>
+          <Text style={styles.headerTitle}>Allotment Check</Text>
           <Text style={styles.headerSubtitle}>Check your IPO allotment</Text>
         </View>
-        <TouchableOpacity style={styles.premiumButton}>
-          <Crown size={20} color="#F59E0B" />
-          <Text style={styles.premiumText}>Premium</Text>
-        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <IPOSelector
-          selectedIPO={selectedIPOId}
-          onSelect={setSelectedIPOId}
+          selectedIPO={selectedIPO.id}
+          onSelect={(id, companyType, name) => setSelectedIPO({ id, companyType, name })}
           style={styles.section}
         />
 
@@ -110,7 +116,7 @@ export default function AllotmentScreen() {
           <Text style={styles.addPanButtonText}>Add New PAN</Text>
         </TouchableOpacity>
 
-        {savedPANs.length > 0 && selectedIPOId && (
+        {savedPANs.length > 0 && selectedIPO.id ? (
           <TouchableOpacity
             style={[styles.checkButton, loading && styles.checkButtonDisabled]}
             onPress={handleCheckAllotment}
@@ -121,13 +127,65 @@ export default function AllotmentScreen() {
               {loading ? 'Checking...' : `Quick Check All ${savedPANs.length} PANs`}
             </Text>
           </TouchableOpacity>
-        )}
+        ) : null}
 
         {savedPANs.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No PAN Cards Saved</Text>
             <Text style={styles.emptySubtitle}>
               Add your PAN cards to quickly check allotment status for any IPO.
+            </Text>
+          </View>
+        )}
+
+        {/* The results only existed inside a modal, so the screen sat empty and
+            the answer disappeared the moment the sheet was dismissed. They stay
+            here until the next check. */}
+        {allotmentResults.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.resultsHeader}>
+              <Text style={styles.resultsTitle}>
+                Result{allotmentResults.length > 1 ? 's' : ''}
+                {selectedIPO.name ? ` — ${selectedIPO.name}` : ''}
+              </Text>
+              <TouchableOpacity onPress={() => setShowResultsModal(true)}>
+                <Text style={styles.resultsLink}>Details</Text>
+              </TouchableOpacity>
+            </View>
+
+            {allotmentResults.map((result, index) => {
+              const allotted = result.status === 'allotted';
+              const noRecord = result.status === 'no_record';
+              const label = allotted
+                ? 'Allotted'
+                : noRecord
+                ? 'No record found'
+                : 'Not allotted';
+              const tone = allotted ? '#10B981' : noRecord ? '#94A3B8' : '#EF4444';
+
+              return (
+                <View style={styles.resultRow} key={`${result.pan}-${index}`}>
+                  <View style={styles.resultLeft}>
+                    <Text style={styles.resultPan}>{result.pan}</Text>
+                    {!!result.shares && (
+                      <Text style={styles.resultMeta}>{result.shares} shares</Text>
+                    )}
+                  </View>
+                  <Text style={[styles.resultStatus, { color: tone }]}>{label}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Something to read while nothing has been checked yet */}
+        {allotmentResults.length === 0 && savedPANs.length > 0 && (
+          <View style={styles.hintBox}>
+            <Text style={styles.hintTitle}>How this works</Text>
+            <Text style={styles.hintText}>
+              Pick the IPO, then check every saved PAN at once. Allotment is published by the
+              registrar on the allotment date — before that the registrar has nothing to return,
+              so a "no record found" answer on an earlier day is expected.
             </Text>
           </View>
         )}
@@ -147,108 +205,155 @@ export default function AllotmentScreen() {
         visible={showResultsModal}
         onClose={() => setShowResultsModal(false)}
         results={allotmentResults}
-        ipoName={selectedIPO?.companyName || 'Selected IPO'}
+        ipoName={selectedIPO?.name || 'Selected IPO'}
       />
+      <CustomTabBar />
     </SafeAreaView>
   );
 }
 
-const getStyles = (isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-  },
-  header: {
+const getStyles = (isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      paddingHorizontal: 20,
+      paddingTop: 35,
+      paddingBottom: 16,
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#334155' : '#E2E8F0',
+    },
+    headerTitle: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: isDark ? '#F1F5F9' : '#1E293B',
+      marginBottom: 4,
+    },
+    headerSubtitle: {
+      fontSize: 16,
+      color: isDark ? '#94A3B8' : '#64748B',
+    },
+    premiumButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? '#1F2937' : '#FEF3C7',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 20,
+      gap: 6,
+    },
+    premiumText: {
+      color: '#F59E0B',
+      fontWeight: '600',
+      fontSize: 14,
+    },
+    scrollView: { flex: 1, paddingHorizontal: 16, paddingVertical: 20 },
+    scrollContent: { paddingBottom: 24 },
+  section: { marginBottom: 20 },
+  resultsHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: isDark ? '#334155' : '#E2E8F0',
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: isDark ? '#F1F5F9' : '#1E293B',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: isDark ? '#94A3B8' : '#64748B',
-  },
-  premiumButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: isDark ? '#1F2937' : '#FEF3C7',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-  },
-  premiumText: {
-    color: '#F59E0B',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  scrollView: {
-    flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    marginBottom: 12,
   },
-  section: {
-    marginBottom: 20,
-  },
-  addPanButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1E40AF',
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-    marginBottom: 16,
-  },
-  addPanButtonText: {
+  resultsTitle: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  checkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#10B981',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    marginBottom: 20,
-  },
-  checkButtonDisabled: {
-    opacity: 0.6,
-  },
-  checkButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyTitle: {
-    fontSize: 20,
     fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
-    marginTop: 16,
-    marginBottom: 8,
   },
-  emptySubtitle: {
-    fontSize: 16,
+  resultsLink: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: isDark ? '#60A5FA' : '#1E40AF',
+  },
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 10,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: isDark ? '#334155' : '#E2E8F0',
+    gap: 12,
+  },
+  resultLeft: { flex: 1 },
+  resultPan: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: isDark ? '#F1F5F9' : '#1E293B',
+    letterSpacing: 0.5,
+  },
+  resultMeta: {
+    fontSize: 12,
     color: isDark ? '#94A3B8' : '#64748B',
-    textAlign: 'center',
-    marginBottom: 24,
+    marginTop: 2,
   },
-});
+  resultStatus: { fontSize: 14, fontWeight: '600' },
+  hintBox: {
+    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: isDark ? '#334155' : '#E2E8F0',
+  },
+  hintTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: isDark ? '#F1F5F9' : '#1E293B',
+    marginBottom: 6,
+  },
+  hintText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: isDark ? '#94A3B8' : '#64748B',
+  },
+    addPanButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#1E40AF',
+      paddingVertical: 14,
+      borderRadius: 12,
+      gap: 8,
+      marginBottom: 16,
+    },
+    addPanButtonText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+    checkButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#10B981',
+      paddingVertical: 16,
+      borderRadius: 12,
+      gap: 8,
+      marginBottom: 20,
+    },
+    checkButtonDisabled: { opacity: 0.6 },
+    checkButtonText: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
+    emptyState: { alignItems: 'center', paddingVertical: 48 },
+    emptyTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: isDark ? '#F1F5F9' : '#1E293B',
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptySubtitle: {
+      fontSize: 16,
+      color: isDark ? '#94A3B8' : '#64748B',
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+  });

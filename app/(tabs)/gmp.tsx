@@ -7,24 +7,44 @@ import {
   TouchableOpacity,
   useColorScheme,
   SafeAreaView,
-  Dimensions,
+  useWindowDimensions,
+  RefreshControl,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LineChart } from 'react-native-chart-kit';
-import { TrendingUp, TrendingDown, Crown, Calendar } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, Calendar } from 'lucide-react-native';
 import { GMPCard } from '@/components/GMPCard';
 import { TimeRangeSelector } from '@/components/TimeRangeSelector';
+import { CustomTabBar } from '@/components/CustomTabBar';
+import { SkeletonLoader } from '@/components/SkeletonLoader';
+import { useGlobalData } from '@/store/GlobalDataStore';
 import { useGMPData } from '@/hooks/useGMPData';
-
-const screenWidth = Dimensions.get('window').width;
+import Loader from '@/components/Loader';
 
 export default function GMPTracker() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // Read per render, so the chart is right after a rotation or in split screen.
+  // Measured once at import it kept the width the app started with.
+  const { width: screenWidth } = useWindowDimensions();
   const [selectedTimeRange, setSelectedTimeRange] = useState<'7d' | '1m' | '3m' | '1y'>('1m');
   const [selectedIPO, setSelectedIPO] = useState<string>('');
   
-  const { gmpData, chartData, topGainers, topLosers } = useGMPData(selectedTimeRange);
+  const { gmpData: globalGMPData, chartData: globalChartData, topGainers: globalTopGainers, topLosers: globalTopLosers, isLoading: globalLoading } = useGlobalData();
+  const { gmpData, chartData, topGainers, topLosers, loading: gmpLoading, refreshGMPData } = useGMPData(selectedTimeRange);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshGMPData();
+    setRefreshing(false);
+  };
+  
+  // Use global data if available, otherwise use hook data
+  const displayGMPData = gmpData.length > 0 ? gmpData : globalGMPData;
+  const displayChartData = chartData.labels.length > 0 ? chartData : globalChartData;
+  const displayTopGainers = topGainers.length > 0 ? topGainers : globalTopGainers;
+  const displayTopLosers = topLosers.length > 0 ? topLosers : globalTopLosers;
 
   const chartConfig = {
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
@@ -55,22 +75,25 @@ export default function GMPTracker() {
           <Text style={styles.headerTitle}>GMP Tracker</Text>
           <Text style={styles.headerSubtitle}>Grey Market Premium trends</Text>
         </View>
-        <TouchableOpacity style={styles.premiumButton}>
-          <Crown size={20} color="#F59E0B" />
-          <Text style={styles.premiumText}>Premium</Text>
-        </TouchableOpacity>
       </View>
-
+{(!displayGMPData.length && !displayChartData.labels.length && (globalLoading || gmpLoading)) ? (
       <ScrollView style={styles.scrollView}>
-        {/* Time Range Selector */}
-        
-
+        <SkeletonLoader type="card" count={6} />
+      </ScrollView>
+    ) : (
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Chart */}
-        {chartData.labels.length > 0 && (
+        {displayChartData.labels.length > 0 && (
           <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>GMP Trend</Text>
+            <Text style={styles.chartTitle}>Live & Top IPOs GMP</Text>
             <LineChart
-              data={chartData}
+              data={displayChartData}
               width={screenWidth - 40}
               height={220}
               chartConfig={chartConfig}
@@ -86,21 +109,23 @@ export default function GMPTracker() {
             <TrendingUp size={20} color="#10B981" />
             <Text style={styles.sectionTitle}>Top Gainers</Text>
           </View>
-          {topGainers.map((item, index) => (
+          {displayTopGainers.map((item, index) => (
             <GMPCard key={`gainer-${index}`} data={item} />
           ))}
         </View>
 
-        {/* Top Losers */}
-       <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <TrendingDown size={20} color="#EF4444" />
-        <Text style={styles.sectionTitle}>Top Losers</Text>
-      </View>
-      {topLosers.map((item, index) => (
-        <GMPCard key={`loser-${index}`} data={item} />
-      ))}
-    </View>
+        {/* Only shown when something is actually trading below issue price */}
+        {displayTopLosers.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <TrendingDown size={20} color="#EF4444" />
+              <Text style={styles.sectionTitle}>Top Losers</Text>
+            </View>
+            {displayTopLosers.map((item, index) => (
+              <GMPCard key={`loser-${index}`} data={item} />
+            ))}
+          </View>
+        )}
 
         {/* All GMP Data */}
         <View style={styles.section}>
@@ -108,11 +133,13 @@ export default function GMPTracker() {
             <Calendar size={20} color="#60A5FA" />
             <Text style={styles.sectionTitle}>All IPOs GMP</Text>
           </View>
-          {gmpData.map((item, index) => (
+          {displayGMPData.map((item, index) => (
             <GMPCard key={`all-${index}`} data={item} />
           ))}
         </View>
       </ScrollView>
+    )}
+      <CustomTabBar />
     </SafeAreaView>
   );
 }
@@ -127,7 +154,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 35,
     paddingBottom: 16,
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     borderBottomWidth: 1,
@@ -157,9 +184,14 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+  // paddingBottom belongs on the content, not on the ScrollView itself: as a
+  // style it shrank the viewport by 120px and left a dead band above the tab
+  // bar that content could never scroll into.
   scrollView: {
     flex: 1,
-    paddingBottom: 120,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   timeRangeContainer: {
     paddingHorizontal: 16,
