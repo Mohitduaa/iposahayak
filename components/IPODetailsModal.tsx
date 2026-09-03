@@ -195,6 +195,41 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
           </TouchableOpacity>
         </View>
 
+        {/* The one action this sheet offers, directly under the title and
+            spelled out. A bare icon next to the close button gave no clue what
+            it did, and the same button placed further down read as part of
+            whichever table it landed between. */}
+        <View style={styles.actionBar}>
+          <TouchableOpacity
+            style={[styles.checkButton, findingRegistrar && styles.checkButtonDisabled]}
+            onPress={runAllotmentCheck}
+            disabled={findingRegistrar}
+            activeOpacity={0.85}
+          >
+            {findingRegistrar ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Search size={18} color="#FFFFFF" />
+            )}
+            <Text style={styles.checkButtonText}>
+              {findingRegistrar ? 'Checking…' : 'Check allotment'}
+            </Text>
+            {!findingRegistrar && savedPANs.length > 0 && (
+              <View style={styles.checkBadge}>
+                <Text style={styles.checkBadgeText}>{savedPANs.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Why the allotment check could not run — right under the button that
+            was tapped, not buried further down the sheet. */}
+        {!!allotmentNote && (
+          <View style={styles.noteBar}>
+            <Text style={styles.noteText}>{allotmentNote}</Text>
+          </View>
+        )}
+
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Key Stats */}
           <View style={styles.section}>
@@ -279,30 +314,6 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
                 <Text style={styles.subscriptionValue}>{ipo.quota?.hni ? `${ipo.quota.hni}%` : '—'}</Text>
               </View>
             </View>
-          </View>
-
-          {/* Check the saved PANs for this IPO without leaving the sheet */}
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={[styles.actionButton, findingRegistrar && styles.actionButtonDisabled]}
-              onPress={runAllotmentCheck}
-              disabled={findingRegistrar}
-            >
-              {findingRegistrar ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Search size={18} color="#FFFFFF" />
-              )}
-              <Text style={styles.actionButtonText}>
-                {findingRegistrar
-                  ? 'Checking…'
-                  : savedPANs.length > 0
-                  ? `Check allotment · ${savedPANs.length} PAN${savedPANs.length > 1 ? 's' : ''}`
-                  : 'Check allotment'}
-              </Text>
-            </TouchableOpacity>
-
-            {!!allotmentNote && <Text style={styles.actionNote}>{allotmentNote}</Text>}
           </View>
 
           {/* Category-wise figures straight from the exchange table */}
@@ -596,65 +607,42 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
   },
-  actionButton: {
+  actionBar: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  checkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     backgroundColor: '#1E40AF',
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderRadius: 12,
   },
-  actionButtonDisabled: { opacity: 0.7 },
-  actionButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-  actionNote: {
+  checkButtonDisabled: { opacity: 0.7 },
+  checkButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  checkBadge: {
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+  },
+  checkBadgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  noteBar: {
+    backgroundColor: isDark ? '#1E293B' : '#EFF6FF',
+    borderBottomWidth: 1,
+    borderBottomColor: isDark ? '#334155' : '#DBEAFE',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  noteText: {
     fontSize: 13,
     lineHeight: 19,
-    color: isDark ? '#94A3B8' : '#64748B',
-    marginTop: 10,
-  },
-  panRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-    borderWidth: 1,
-    borderColor: isDark ? '#334155' : '#E2E8F0',
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 10,
-  },
-  panAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: isDark ? '#334155' : '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  panAvatarText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: isDark ? '#93C5FD' : '#1E40AF',
-  },
-  panInfo: { flex: 1 },
-  panName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: isDark ? '#F1F5F9' : '#1E293B',
-  },
-  panNumber: {
-    fontSize: 12,
-    letterSpacing: 1,
-    color: isDark ? '#94A3B8' : '#64748B',
-    marginTop: 2,
-  },
-  panResult: { alignItems: 'flex-end' },
-  panStatus: { fontSize: 14, fontWeight: '600' },
-  panShares: {
-    fontSize: 12,
-    color: isDark ? '#94A3B8' : '#64748B',
-    marginTop: 2,
+    color: isDark ? '#CBD5E1' : '#1E3A8A',
   },
   inlineLoader: {
     paddingVertical: 16,

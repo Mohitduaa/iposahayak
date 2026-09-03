@@ -10,7 +10,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSavedPANs } from '@/hooks/useSavedPANs';
 import { useAllotmentCheck } from '@/hooks/useAllotmentCheck';
@@ -39,6 +39,9 @@ export default function AllotmentResultScreen() {
   const { checkAllotment, loading } = useAllotmentCheck();
   const [results, setResults] = useState<AllotmentStatus[] | null>(null);
   const [note, setNote] = useState('');
+  // Which row is open. The registrar returns the application number, the DP id
+  // and the amounts as well as the verdict, and none of that fits on one line.
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const run = useCallback(async () => {
     if (!companyValue || !companyType) {
@@ -85,25 +88,64 @@ export default function AllotmentResultScreen() {
     const masked =
       item.pan.length > 4 ? `${'X'.repeat(item.pan.length - 4)}${item.pan.slice(-4)}` : item.pan;
 
+    const isOpen = expanded === item.pan;
+    const details: { label: string; value: string }[] = [
+      { label: 'PAN', value: item.pan },
+      ...(item.applicationNo ? [{ label: 'Application no.', value: String(item.applicationNo) }] : []),
+      ...(item.dpId ? [{ label: 'DP / Client ID', value: String(item.dpId) }] : []),
+      ...(item.shares ? [{ label: allotted ? 'Shares applied' : 'Shares', value: String(item.shares) }] : []),
+      ...(item.allottedShares ? [{ label: 'Shares allotted', value: String(item.allottedShares) }] : []),
+      ...(item.amount ? [{ label: 'Amount adjusted', value: `₹${item.amount}` }] : []),
+      ...(item.refundAmount ? [{ label: 'Refund', value: `₹${item.refundAmount}` }] : []),
+    ];
+
     return (
-      <View style={styles.row}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{String(person).charAt(0).toUpperCase()}</Text>
-        </View>
-        <View style={styles.rowInfo}>
-          <Text style={styles.rowName} numberOfLines={1}>{person}</Text>
-          <Text style={styles.rowPan}>{masked}</Text>
-        </View>
-        <View style={styles.rowRight}>
-          <Text style={[styles.rowStatus, { color: tone }]}>{label}</Text>
-          {allotted && !!item.shares && (
-            <Text style={styles.rowMeta}>{item.shares} shares</Text>
+      <TouchableOpacity
+        style={styles.row}
+        activeOpacity={0.7}
+        onPress={() => setExpanded(isOpen ? null : item.pan)}
+      >
+        <View style={styles.rowTop}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{String(person).charAt(0).toUpperCase()}</Text>
+          </View>
+          <View style={styles.rowInfo}>
+            <Text style={styles.rowName} numberOfLines={1}>{person}</Text>
+            <Text style={styles.rowPan}>{isOpen ? item.pan : masked}</Text>
+          </View>
+          <View style={styles.rowRight}>
+            <Text style={[styles.rowStatus, { color: tone }]}>{label}</Text>
+            {allotted && !!item.allottedShares && (
+              <Text style={styles.rowMeta}>{item.allottedShares} shares</Text>
+            )}
+            {!allotted && !!item.refundAmount && (
+              <Text style={styles.rowMeta}>₹{item.refundAmount} refunded</Text>
+            )}
+          </View>
+          {isOpen ? (
+            <ChevronUp size={18} color={isDark ? '#64748B' : '#94A3B8'} />
+          ) : (
+            <ChevronDown size={18} color={isDark ? '#64748B' : '#94A3B8'} />
           )}
-          {!allotted && !!item.refundAmount && (
-            <Text style={styles.rowMeta}>₹{item.refundAmount} refunded</Text>
-          )}
         </View>
-      </View>
+
+        {isOpen && (
+          <View style={styles.rowDetails}>
+            {details.map((detail) => (
+              <View style={styles.detailLine} key={detail.label}>
+                <Text style={styles.detailLabel}>{detail.label}</Text>
+                <Text style={styles.detailValue} selectable>{detail.value}</Text>
+              </View>
+            ))}
+            {noRecord && (
+              <Text style={styles.detailNote}>
+                The registrar has no application against this PAN for this issue. If an
+                application was made, allotment for it may not be published yet.
+              </Text>
+            )}
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -222,15 +264,40 @@ const getStyles = (isDark: boolean) =>
     },
     listContent: { padding: 16, paddingBottom: 96 },
     row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
       backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
       borderWidth: 1,
       borderColor: isDark ? '#334155' : '#E2E8F0',
       borderRadius: 12,
       padding: 14,
       marginBottom: 10,
+    },
+    rowTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    rowDetails: {
+      marginTop: 14,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: isDark ? '#334155' : '#E2E8F0',
+      gap: 8,
+    },
+    detailLine: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 16,
+    },
+    detailLabel: { fontSize: 13, color: isDark ? '#94A3B8' : '#64748B' },
+    detailValue: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '600',
+      textAlign: 'right',
+      color: isDark ? '#F1F5F9' : '#1E293B',
+    },
+    detailNote: {
+      fontSize: 12,
+      lineHeight: 18,
+      color: isDark ? '#94A3B8' : '#64748B',
+      marginTop: 4,
     },
     avatar: {
       width: 38,
