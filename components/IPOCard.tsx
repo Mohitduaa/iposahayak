@@ -141,12 +141,28 @@ export function IPOCard({ ipo }: IPOCardProps) {
     }
   };
 
+  const hasRibbon = Boolean(ipo.listedToday || ipo.allotmentToday);
+
   const styles = getStyles(isDark);
 
   return (
     <>
       <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 0.9 }}>
         <TouchableOpacity style={styles.container} onPress={() => setShowDetails(true)}>
+          {/* A corner ribbon rather than another pill among the badges: it is
+              true for one day only, so it should read before anything else on
+              the card. Its top-right radius matches the card's so it sits
+              flush in the corner. */}
+          {ipo.listedToday ? (
+            <View style={[styles.ribbon, styles.ribbonListed]}>
+              <Text style={styles.ribbonText}>Listed Today</Text>
+            </View>
+          ) : ipo.allotmentToday ? (
+            <View style={[styles.ribbon, styles.ribbonAllotment]}>
+              <Text style={styles.ribbonText}>Allotment Today</Text>
+            </View>
+          ) : null}
+
           {ipo.status === 'ongoing' && !!countdown && (
             <View style={styles.detailRoww}>
               <Clock size={16} color="red" />
@@ -161,7 +177,9 @@ export function IPOCard({ ipo }: IPOCardProps) {
             </View>
           )}
 
-          <View style={styles.header}>
+          {/* The ribbon sits over the top-right corner, where the share button
+              is, so the header starts below it when one is showing. */}
+          <View style={[styles.header, hasRibbon && styles.headerWithRibbon]}>
             <View style={styles.companyInfo}>
               <Text style={styles.companyName} numberOfLines={1}>
                 {ipo.companyName || ''}
@@ -185,18 +203,6 @@ export function IPOCard({ ipo }: IPOCardProps) {
                 </Text>
               </View>
 
-              {/* Sits under the status badge because both answer the same
-                  question — where this issue stands today. Beside the board
-                  name it was next to a fact that never changes. */}
-              {ipo.listedToday ? (
-                <View style={[styles.todayTag, styles.listedTag]}>
-                  <Text style={styles.todayTagText}>LISTED TODAY</Text>
-                </View>
-              ) : ipo.allotmentToday ? (
-                <View style={[styles.todayTag, styles.allotmentTag]}>
-                  <Text style={styles.todayTagText}>ALLOTMENT TODAY</Text>
-                </View>
-              ) : null}
             </View>
           </View>
 
@@ -371,6 +377,9 @@ const getStyles = (isDark: boolean) =>
       borderColor: isDark ? '#334155' : '#E2E8F0',
       marginBottom: 2,
     },
+    headerWithRibbon: {
+      marginTop: 22,
+    },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -395,22 +404,26 @@ const getStyles = (isDark: boolean) =>
       marginLeft: 'auto',
       padding: 8,
     },
-    // Solid rather than tinted like the status badge above it: this is true
-    // for one day only, so it should be the thing the eye lands on.
-    todayTag: {
-      alignSelf: 'flex-end',
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-      marginTop: 6,
+    ribbon: {
+      position: 'absolute',
+      top: -1,
+      right: -1,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      // Matches the card corner so it sits flush, and curves away on the
+      // inside edge like a ribbon folded over the top
+      borderTopRightRadius: 16,
+      borderBottomLeftRadius: 14,
+      zIndex: 2,
+      elevation: 3,
     },
-    listedTag: { backgroundColor: '#DC2626' },
-    allotmentTag: { backgroundColor: '#F59E0B' },
-    todayTagText: {
-      fontSize: 9,
-      fontWeight: '800',
+    ribbonListed: { backgroundColor: '#EF4444' },
+    ribbonAllotment: { backgroundColor: '#F59E0B' },
+    ribbonText: {
+      fontSize: 12,
+      fontWeight: '700',
       color: '#FFFFFF',
-      letterSpacing: 0.4,
+      letterSpacing: 0.2,
     },
     statusBadge: {
       alignSelf: 'flex-start',
