@@ -5,17 +5,31 @@ export interface IPO {
   closeDate: string;
   listingDate?: string;
   issuePrice: string;
-  lotSize: number;
+  lotSize: string;
   status: 'upcoming' | 'ongoing' | 'closed' | 'listed';
-  registrar: 'kfintech' | 'linkintime' | 'other';
+  registrar: string;
   gmp?: number;
   gmpChange?: number;
+  /** How many times each category has been subscribed, from the live figures. */
   subscription: {
     retail: number;
     qib: number;
     hni: number;
   };
+  /** What share of the issue is reserved for each category, in percent. */
+  quota: {
+    retail: number;
+    qib: number;
+    hni: number;
+  };
+  /** True once real subscription figures exist — before that there is nothing to show. */
+  hasSubscriptionData: boolean;
   category: string;
+  allotment: string;
+  allotmentout?: string;
+  gain?: string;
+  subscribed?: string;
+  timeLeft?: string;
   totalIssueSize: string;
   faceValue: number;
   priceRange: string;

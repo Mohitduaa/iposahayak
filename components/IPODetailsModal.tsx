@@ -45,7 +45,13 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString || dateString === 'Will be announced soon') {
+      return 'TBA';
+    }
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return dateString; // Return original if can't parse
+    }
     return date.toLocaleDateString('en-IN', { 
       day: '2-digit', 
       month: 'short',
@@ -86,7 +92,7 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
             <Text style={styles.sectionTitle}>Key Information</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <DollarSign size={20} color="#10B981" />
+<Text style={{ fontSize: 20, color: '#10B981', fontWeight: 'bold' }}>₹</Text>
                 <Text style={styles.statLabel}>Issue Price</Text>
                 <Text style={styles.statValue}>{ipo.issuePrice}</Text>
               </View>
@@ -113,68 +119,104 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
           {/* Timeline */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Timeline</Text>
-            <View style={styles.timelineContainer}>
-              <View style={styles.timelineItem}>
-                <View style={styles.timelineIcon}>
-                  <Calendar size={16} color="#60A5FA" />
-                </View>
-                <View style={styles.timelineContent}>
-                  <Text style={styles.timelineTitle}>Open Date</Text>
-                  <Text style={styles.timelineDate}>{formatDate(ipo.openDate)}</Text>
-                </View>
+            <View style={styles.timelineTable}>
+              <View style={styles.timelineRow}>
+                <Text style={styles.timelineLabel}>Event</Text>
+                <Text style={styles.timelineLabel}>Date</Text>
               </View>
-              <View style={styles.timelineItem}>
-                <View style={styles.timelineIcon}>
-                  <Clock size={16} color="#F59E0B" />
-                </View>
-                <View style={styles.timelineContent}>
-                  <Text style={styles.timelineTitle}>Close Date</Text>
-                  <Text style={styles.timelineDate}>{formatDate(ipo.closeDate)}</Text>
-                </View>
+              <View style={styles.timelineRow}>
+                <Text style={styles.timelineEvent}>Open Date</Text>
+                <Text style={styles.timelineDate}>{formatDate(ipo.openDate)}</Text>
               </View>
-              {ipo.listingDate && (
-                <View style={styles.timelineItem}>
-                  <View style={styles.timelineIcon}>
-                    <TrendingUp size={16} color="#10B981" />
-                  </View>
-                  <View style={styles.timelineContent}>
-                    <Text style={styles.timelineTitle}>Listing Date</Text>
-                    <Text style={styles.timelineDate}>{formatDate(ipo.listingDate)}</Text>
-                  </View>
+              <View style={styles.timelineRow}>
+                <Text style={styles.timelineEvent}>Close Date</Text>
+                <Text style={styles.timelineDate}>{formatDate(ipo.closeDate)}</Text>
+              </View>
+              {!!ipo.allotment && (
+                <View style={styles.timelineRow}>
+                  <Text style={styles.timelineEvent}>Allotment Date</Text>
+                  <Text style={styles.timelineDate}>{ipo.allotment}</Text>
+                </View>
+              )}
+              {!!ipo.listingDate && (
+                <View style={styles.timelineRow}>
+                  <Text style={styles.timelineEvent}>Listing Date</Text>
+                  <Text style={styles.timelineDate}>{ipo.listingDate}</Text>
                 </View>
               )}
             </View>
           </View>
 
-          {/* Subscription Status */}
+          {/* How the issue is split between categories — a share of the offer,
+              not a subscription figure. These were previously printed as "35x",
+              which read as an issue 35 times covered before a single bid. */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Subscription Status</Text>
-            <View style={styles.subscriptionGrid}>
-              <View style={styles.subscriptionCard}>
-                <Text style={styles.subscriptionLabel}>Retail</Text>
-                <Text style={styles.subscriptionValue}>{ipo.subscription.retail.toFixed(1)}x</Text>
-                <View style={[styles.subscriptionBar, { width: Math.min(ipo.subscription.retail * 10, 100) + '%' }]} />
+            <Text style={styles.sectionTitle}>IPO Reservation</Text>
+            <View style={styles.subscriptionTable}>
+              <View style={styles.subscriptionRow}>
+                <Text style={styles.subscriptionLabel}>Category</Text>
+                <Text style={styles.subscriptionLabel}>Share of issue</Text>
               </View>
-              <View style={styles.subscriptionCard}>
-                <Text style={styles.subscriptionLabel}>QIB</Text>
-                <Text style={styles.subscriptionValue}>{ipo.subscription.qib.toFixed(1)}x</Text>
-                <View style={[styles.subscriptionBar, { width: Math.min(ipo.subscription.qib * 10, 100) + '%' }]} />
+              <View style={styles.subscriptionRow}>
+                <Text style={styles.subscriptionCategory}>Retail</Text>
+                <Text style={styles.subscriptionValue}>{ipo.quota?.retail ? `${ipo.quota.retail}%` : '—'}</Text>
               </View>
-              <View style={styles.subscriptionCard}>
-                <Text style={styles.subscriptionLabel}>HNI</Text>
-                <Text style={styles.subscriptionValue}>{ipo.subscription.hni.toFixed(1)}x</Text>
-                <View style={[styles.subscriptionBar, { width: Math.min(ipo.subscription.hni * 10, 100) + '%' }]} />
+              <View style={styles.subscriptionRow}>
+                <Text style={styles.subscriptionCategory}>QIB</Text>
+                <Text style={styles.subscriptionValue}>{ipo.quota?.qib ? `${ipo.quota.qib}%` : '—'}</Text>
+              </View>
+              <View style={styles.subscriptionRow}>
+                <Text style={styles.subscriptionCategory}>HNI</Text>
+                <Text style={styles.subscriptionValue}>{ipo.quota?.hni ? `${ipo.quota.hni}%` : '—'}</Text>
               </View>
             </View>
           </View>
 
+          {/* The live figures, shown only once bidding has produced some */}
+          {ipo.hasSubscriptionData && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Subscription</Text>
+              <View style={styles.subscriptionTable}>
+                <View style={styles.subscriptionRow}>
+                  <Text style={styles.subscriptionLabel}>Category</Text>
+                  <Text style={styles.subscriptionLabel}>Times subscribed</Text>
+                </View>
+                <View style={styles.subscriptionRow}>
+                  <Text style={styles.subscriptionCategory}>Retail</Text>
+                  <Text style={styles.subscriptionValue}>
+                    {ipo.subscription.retail ? `${ipo.subscription.retail}x` : '—'}
+                  </Text>
+                </View>
+                <View style={styles.subscriptionRow}>
+                  <Text style={styles.subscriptionCategory}>QIB</Text>
+                  <Text style={styles.subscriptionValue}>
+                    {ipo.subscription.qib ? `${ipo.subscription.qib}x` : '—'}
+                  </Text>
+                </View>
+                <View style={styles.subscriptionRow}>
+                  <Text style={styles.subscriptionCategory}>HNI</Text>
+                  <Text style={styles.subscriptionValue}>
+                    {ipo.subscription.hni ? `${ipo.subscription.hni}x` : '—'}
+                  </Text>
+                </View>
+                {!!ipo.subscribed && (
+                  <View style={styles.subscriptionRow}>
+                    <Text style={styles.subscriptionCategory}>Overall</Text>
+                    <Text style={styles.subscriptionValue}>{ipo.subscribed}x</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+
           {/* Additional Details */}
-          <View style={styles.section}>
+          <View style={[styles.section, styles.lastSection]}>
             <Text style={styles.sectionTitle}>Additional Details</Text>
             <View style={styles.detailsList}>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Total Issue Size</Text>
                 <Text style={styles.detailValue}>{ipo.totalIssueSize}</Text>
+                
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Face Value</Text>
@@ -187,8 +229,7 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Registrar</Text>
                 <Text style={styles.detailValue}>
-                  {ipo.registrar === 'kfintech' ? 'KFintech' : 
-                   ipo.registrar === 'linkintime' ? 'Link Intime' : 'Other'}
+                  {ipo.registrar}
                 </Text>
               </View>
             </View>
@@ -275,61 +316,63 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
   },
-  timelineContainer: {
-    gap: 16,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  timelineIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: isDark ? '#334155' : '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  timelineContent: {
-    flex: 1,
-  },
-  timelineTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: isDark ? '#F1F5F9' : '#1E293B',
-    marginBottom: 2,
-  },
-  timelineDate: {
-    fontSize: 14,
-    color: isDark ? '#94A3B8' : '#64748B',
-  },
-  subscriptionGrid: {
-    gap: 12,
-  },
-  subscriptionCard: {
+  timelineTable: {
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: isDark ? '#334155' : '#E2E8F0',
+    overflow: 'hidden',
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: isDark ? '#334155' : '#F1F5F9',
+  },
+  timelineLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: isDark ? '#F1F5F9' : '#1E293B',
+  },
+  timelineEvent: {
+    fontSize: 14,
+    color: isDark ? '#94A3B8' : '#64748B',
+  },
+  timelineDate: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: isDark ? '#F1F5F9' : '#1E293B',
+  },
+  subscriptionTable: {
+    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: isDark ? '#334155' : '#E2E8F0',
+    overflow: 'hidden',
+  },
+  subscriptionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: isDark ? '#334155' : '#F1F5F9',
   },
   subscriptionLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: isDark ? '#F1F5F9' : '#1E293B',
+  },
+  subscriptionCategory: {
+    fontSize: 14,
     color: isDark ? '#94A3B8' : '#64748B',
-    marginBottom: 8,
   },
   subscriptionValue: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
-    marginBottom: 8,
-  },
-  subscriptionBar: {
-    height: 4,
-    backgroundColor: '#60A5FA',
-    borderRadius: 2,
   },
   detailsList: {
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
@@ -354,5 +397,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
+  },
+  lastSection: {
+    marginBottom: 40,
   },
 });
