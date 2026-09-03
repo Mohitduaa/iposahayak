@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { apiUrl, fetchJson } from '@/services/api';
 
 // ---------------------------------------------------------------------------
@@ -184,7 +185,26 @@ export function useGMPData(_timeRange?: string) {
     if (!started) {
       started = true;
       refreshGMPData();
-      timer = setInterval(() => refreshGMPData(), REFRESH_MINUTES * 60 * 1000);
+
+      // Two minutes is a sensible pace for a premium that moves through the
+      // day, and no pace at all is right for an app in the background.
+      const start = () => {
+        if (!timer) timer = setInterval(() => refreshGMPData(), REFRESH_MINUTES * 60 * 1000);
+      };
+      const stop = () => {
+        if (timer) clearInterval(timer);
+        timer = null;
+      };
+
+      start();
+      AppState.addEventListener('change', (state) => {
+        if (state === 'active') {
+          start();
+          refreshGMPData();
+        } else {
+          stop();
+        }
+      });
     }
 
     return () => {

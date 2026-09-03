@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IPO } from '@/types';
 import { apiUrl, fetchJson } from '@/services/api';
@@ -309,6 +310,17 @@ export async function fetchClosedIPOsWithSearch(
   };
 }
 
+function startTimer() {
+  if (refreshTimer) return;
+  refreshTimer = setInterval(() => refreshData(), CACHE_EXPIRY_MINUTES * 60 * 1000);
+}
+
+function stopTimer() {
+  if (!refreshTimer) return;
+  clearInterval(refreshTimer);
+  refreshTimer = null;
+}
+
 async function initialise() {
   if (hydrated) return;
   hydrated = true;
@@ -317,10 +329,19 @@ async function initialise() {
   if (!fresh) await refreshData();
   else setTimeout(() => refreshData(), 1000);
 
-  // One timer for the whole app, not one per hook instance
-  if (!refreshTimer) {
-    refreshTimer = setInterval(() => refreshData(), CACHE_EXPIRY_MINUTES * 60 * 1000);
-  }
+  // One timer for the whole app, not one per hook instance — and none at all
+  // while the app is in the background, where a refresh burns battery for a
+  // screen nobody is looking at. Coming back to the foreground refreshes once,
+  // which is also what makes the data look current on return.
+  startTimer();
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+      startTimer();
+      refreshData();
+    } else {
+      stopTimer();
+    }
+  });
 }
 
 export function useIPOData() {

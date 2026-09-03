@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { OneSignal, LogLevel } from 'react-native-onesignal';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import OfflineNotice from '@/components/OfflineNotice';
+import { UpdatePrompt } from '@/components/UpdatePrompt';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
@@ -87,6 +88,9 @@ useEffect(() => {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="+not-found" />
       </Stack>
+      {/* Sits above every screen so a published update can be applied from
+          wherever the reader happens to be */}
+      <UpdatePrompt />
       <StatusBar style="auto" />
     </GestureHandlerRootView>
   );

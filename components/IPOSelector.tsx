@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,16 +12,20 @@ import {
 } from 'react-native';
 import { ChevronDown, Search } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { loadRegistrarCompanies } from '@/services/registrar';
+
+type RegistrarType = 'MUFGL' | 'BIGSHARE';
 
 interface IPOSelectorProps {
   selectedIPO: string;
-  onSelect: (ipoId: string) => void;
+  onSelect: (ipoId: string, companyType: RegistrarType, name?: string) => void; // updated
   style?: ViewStyle;
 }
 
 interface IPOCompany {
   value: string;
   name: string;
+  companyType: RegistrarType;
 }
 
 export function IPOSelector({ selectedIPO, onSelect, style }: IPOSelectorProps) {
@@ -31,91 +35,38 @@ export function IPOSelector({ selectedIPO, onSelect, style }: IPOSelectorProps) 
   const [companies, setCompanies] = useState<IPOCompany[]>([]);
   const [loading, setLoading] = useState(false);
 
-useEffect(() => {
-  let intervalId: ReturnType<typeof setInterval>;
+  // This kept its own copy of the registrar lists, refetching both every five
+  // minutes for as long as the screen was open and writing state whether or
+  // not the component was still mounted. services/registrar.ts already loads
+  // and caches them for the allotment lookup, so this reads from there — one
+  // fetch, shared, and no timer to leak.
+  useEffect(() => {
+    let cancelled = false;
 
-  const fetchAndCacheCompanies = async () => {
-    setLoading(true);
-    try {
-      // Try fetching fresh data
-      const [mufgRes, bigshareRes, kfintechRes] = await Promise.all([
-        fetch('https://rechat.sbs/mufg-ipo-companies'),
-        fetch('https://rechat.sbs/bigshare-ipo-companies'),
-        fetch('https://rechat.sbs/kfintech-ipo-companies'),
-      ]);
-
-      const mufgData = await mufgRes.json();
-      const bigshareData = await bigshareRes.json();
-      const kfintechData = await kfintechRes.json();
-
-      // Extract and filter companies
-      const mufgCompanies = Array.isArray(mufgData?.companies)
-        ? mufgData.companies.filter((c) => c.value !== '--Select Company--')
-        : [];
-
-      const bigshareCompanies = Array.isArray(bigshareData?.companies)
-        ? bigshareData.companies.filter((c) => c.value !== '--Select Company--')
-        : [];
-
-      const kfintechCompanies = Array.isArray(kfintechData?.companies)
-        ? kfintechData.companies.filter((c) => c.value !== '--Select Company--')
-        : [];
-
-      // Merge without duplicates
-      const mergedCompanies: IPOCompany[] = [
-        ...mufgCompanies,
-        ...bigshareCompanies.filter(
-          (b) => !mufgCompanies.some((m) => m.value === b.value)
-        ),
-        ...kfintechCompanies.filter(
-          (k) =>
-            !mufgCompanies.some((m) => m.value === k.value) &&
-            !bigshareCompanies.some((b) => b.value === k.value)
-        ),
-      ];
-
-      setCompanies(mergedCompanies);
-
-      // Cache in AsyncStorage as string
-      await AsyncStorage.setItem('ipoCompaniesCache', JSON.stringify(mergedCompanies));
-      await AsyncStorage.setItem('ipoCompaniesCacheTimestamp', Date.now().toString());
-    } catch (error) {
-      console.error('Error fetching IPO companies:', error);
-
-      // On error, try load cached data
+    (async () => {
+      // Show the last saved list immediately, then refresh
       try {
         const cached = await AsyncStorage.getItem('ipoCompaniesCache');
-        if (cached) {
-          setCompanies(JSON.parse(cached));
-        }
-      } catch (cacheError) {
-        console.error('Error reading cached IPO companies:', cacheError);
+        if (!cancelled && cached) setCompanies(JSON.parse(cached));
+      } catch (error) {
+        console.warn('Could not read the cached company list:', error);
       }
-    } finally {
+
+      setLoading(true);
+      const list = await loadRegistrarCompanies();
+      if (cancelled) return;
+
+      if (list.length) {
+        setCompanies(list as IPOCompany[]);
+        AsyncStorage.setItem('ipoCompaniesCache', JSON.stringify(list)).catch(() => {});
+      }
       setLoading(false);
-    }
-  };
+    })();
 
-  // On mount, load cached data first (if any)
-  const loadCachedData = async () => {
-    try {
-      const cached = await AsyncStorage.getItem('ipoCompaniesCache');
-      if (cached) {
-        setCompanies(JSON.parse(cached));
-      }
-    } catch (cacheError) {
-      console.error('Error reading cached IPO companies on mount:', cacheError);
-    }
-  };
-
-  loadCachedData();
-  fetchAndCacheCompanies();
-
-  intervalId = setInterval(fetchAndCacheCompanies, 5 * 60 * 1000);
-
-  return () => clearInterval(intervalId);
-}, []);
-
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const selectedIPOData = companies.find((ipo) => ipo.value === selectedIPO);
   const styles = getStyles(isDark);
@@ -159,7 +110,7 @@ useEffect(() => {
                     selectedIPO === item.value && styles.selectedIpoItem,
                   ]}
                   onPress={() => {
-                    onSelect(item.value);
+                    onSelect(item.value, item.companyType, item.name); // ✅ pass id + registrar + name
                     setIsVisible(false);
                   }}
                 >
@@ -178,9 +129,7 @@ useEffect(() => {
 
 const getStyles = (isDark: boolean) =>
   StyleSheet.create({
-    container: {
-      marginBottom: 8,
-    },
+    container: { marginBottom: 8 },
     selector: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -227,13 +176,8 @@ const getStyles = (isDark: boolean) =>
       backgroundColor: '#1E40AF',
       borderRadius: 8,
     },
-    closeButtonText: {
-      color: '#FFFFFF',
-      fontWeight: '600',
-    },
-    ipoList: {
-      flex: 1,
-    },
+    closeButtonText: { color: '#FFFFFF', fontWeight: '600' },
+    ipoList: { flex: 1 },
     ipoItem: {
       flexDirection: 'row',
       justifyContent: 'space-between',
