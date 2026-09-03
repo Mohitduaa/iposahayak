@@ -76,8 +76,11 @@ export default function SearchScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color={isDark ? '#F1F5F9' : '#1E293B'} />
         </TouchableOpacity>
+        {/* searchInput carries the text colour and was never applied, so what
+            was typed rendered in the platform default — near-black on the dark
+            background, which read as an empty box. */}
         <TextInput
-          style={styles.searchContainer}
+          style={[styles.searchContainer, styles.searchInput]}
           placeholder="Search IPOs..."
           placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
           value={searchQuery}

@@ -42,6 +42,11 @@ export interface AllotmentStatus {
   shares?: number;
   amount?: number;
   refundAmount?: number;
+  /** The registrars return these too; the type never listed them. */
+  name?: string;
+  applicationNo?: string;
+  dpId?: string;
+  allottedShares?: number;
 }
 
 export interface User {

@@ -156,22 +156,37 @@ export default function AllotmentScreen() {
             {allotmentResults.map((result, index) => {
               const allotted = result.status === 'allotted';
               const noRecord = result.status === 'no_record';
-              const label = allotted
-                ? 'Allotted'
-                : noRecord
-                ? 'No record found'
-                : 'Not allotted';
+              const label = allotted ? 'Allotted' : noRecord ? 'No record' : 'Not allotted';
               const tone = allotted ? '#10B981' : noRecord ? '#94A3B8' : '#EF4444';
+
+              // Prefer the name the registrar returned, then the saved label —
+              // a bare PAN tells you nothing when several are saved.
+              const person =
+                result.name ||
+                savedPANs.find((saved) => saved.pan === result.pan)?.name ||
+                'Saved PAN';
+              const masked =
+                result.pan.length > 4
+                  ? `${'X'.repeat(result.pan.length - 4)}${result.pan.slice(-4)}`
+                  : result.pan;
 
               return (
                 <View style={styles.resultRow} key={`${result.pan}-${index}`}>
+                  <View style={styles.resultAvatar}>
+                    <Text style={styles.resultAvatarText}>
+                      {String(person).charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
                   <View style={styles.resultLeft}>
-                    <Text style={styles.resultPan}>{result.pan}</Text>
-                    {!!result.shares && (
+                    <Text style={styles.resultName} numberOfLines={1}>{person}</Text>
+                    <Text style={styles.resultPan}>{masked}</Text>
+                  </View>
+                  <View style={styles.resultRight}>
+                    <Text style={[styles.resultStatus, { color: tone }]}>{label}</Text>
+                    {allotted && !!result.shares && (
                       <Text style={styles.resultMeta}>{result.shares} shares</Text>
                     )}
                   </View>
-                  <Text style={[styles.resultStatus, { color: tone }]}>{label}</Text>
                 </View>
               );
             })}
@@ -287,12 +302,31 @@ const getStyles = (isDark: boolean) =>
     borderColor: isDark ? '#334155' : '#E2E8F0',
     gap: 12,
   },
+  resultAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: isDark ? '#334155' : '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resultAvatarText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: isDark ? '#93C5FD' : '#1E40AF',
+  },
   resultLeft: { flex: 1 },
-  resultPan: {
+  resultRight: { alignItems: 'flex-end' },
+  resultName: {
     fontSize: 15,
     fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
-    letterSpacing: 0.5,
+  },
+  resultPan: {
+    fontSize: 12,
+    letterSpacing: 1,
+    color: isDark ? '#94A3B8' : '#64748B',
+    marginTop: 2,
   },
   resultMeta: {
     fontSize: 12,

@@ -9,9 +9,12 @@ import {
   ActivityIndicator,
   useColorScheme,
 } from 'react-native';
-import { X, Calendar, TrendingUp, Users, Crown, Building, DollarSign, Target, Clock } from 'lucide-react-native';
+import { X, TrendingUp, Building, Target, Search } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { IPO } from '@/types';
 import { apiUrl, fetchJson } from '@/services/api';
+import { findRegistrarCompany } from '@/services/registrar';
+import { useSavedPANs } from '@/hooks/useSavedPANs';
 
 interface IPODetailsModalProps {
   ipo: IPO;
@@ -41,6 +44,51 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
   const isDark = colorScheme === 'dark';
   const [full, setFull] = useState<FullIPO | null>(null);
   const [loadingFull, setLoadingFull] = useState(false);
+
+  const { savedPANs } = useSavedPANs();
+  const [findingRegistrar, setFindingRegistrar] = useState(false);
+  const [allotmentNote, setAllotmentNote] = useState<string>('');
+
+  /**
+   * Opens the results on their own screen. Ten or fifteen saved PANs make a
+   * list that does not belong inside a sheet already carrying the issue's
+   * tables. The registrar publishes a company only once allotment is
+   * finalised, so an unmatched lookup means the result is not out yet rather
+   * than that something went wrong.
+   */
+  const runAllotmentCheck = async () => {
+    setAllotmentNote('');
+
+    if (savedPANs.length === 0) {
+      setAllotmentNote('Add a PAN on the Allotment tab first.');
+      return;
+    }
+
+    setFindingRegistrar(true);
+    const company = await findRegistrarCompany(ipo.companyName);
+    setFindingRegistrar(false);
+
+    if (!company) {
+      setAllotmentNote(
+        ipo.allotment
+          ? `${ipo.registrar || 'The registrar'} has not published this issue yet. Allotment is expected on ${ipo.allotment}.`
+          : `${ipo.registrar || 'The registrar'} has not published allotment for this issue yet.`
+      );
+      return;
+    }
+
+    // The sheet has to go first, or it sits over the screen being pushed
+    onClose();
+    router.push({
+      pathname: '/allotment-result',
+      params: { name: ipo.companyName, company: company.value, type: company.companyType },
+    } as never);
+  };
+
+  // A different IPO in the same sheet must not keep the last one's message
+  useEffect(() => {
+    setAllotmentNote('');
+  }, [ipo.id, visible]);
 
   // The list endpoint strips the write-up, the analysis and the scraped data
   // blocks to keep the payload small, so the sheet asks for the whole record
@@ -231,6 +279,30 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
                 <Text style={styles.subscriptionValue}>{ipo.quota?.hni ? `${ipo.quota.hni}%` : '—'}</Text>
               </View>
             </View>
+          </View>
+
+          {/* Check the saved PANs for this IPO without leaving the sheet */}
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={[styles.actionButton, findingRegistrar && styles.actionButtonDisabled]}
+              onPress={runAllotmentCheck}
+              disabled={findingRegistrar}
+            >
+              {findingRegistrar ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Search size={18} color="#FFFFFF" />
+              )}
+              <Text style={styles.actionButtonText}>
+                {findingRegistrar
+                  ? 'Checking…'
+                  : savedPANs.length > 0
+                  ? `Check allotment · ${savedPANs.length} PAN${savedPANs.length > 1 ? 's' : ''}`
+                  : 'Check allotment'}
+              </Text>
+            </TouchableOpacity>
+
+            {!!allotmentNote && <Text style={styles.actionNote}>{allotmentNote}</Text>}
           </View>
 
           {/* Category-wise figures straight from the exchange table */}
@@ -523,6 +595,66 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: isDark ? '#F1F5F9' : '#1E293B',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1E40AF',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  actionButtonDisabled: { opacity: 0.7 },
+  actionButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  actionNote: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: isDark ? '#94A3B8' : '#64748B',
+    marginTop: 10,
+  },
+  panRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+    borderWidth: 1,
+    borderColor: isDark ? '#334155' : '#E2E8F0',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 10,
+  },
+  panAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: isDark ? '#334155' : '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panAvatarText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: isDark ? '#93C5FD' : '#1E40AF',
+  },
+  panInfo: { flex: 1 },
+  panName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: isDark ? '#F1F5F9' : '#1E293B',
+  },
+  panNumber: {
+    fontSize: 12,
+    letterSpacing: 1,
+    color: isDark ? '#94A3B8' : '#64748B',
+    marginTop: 2,
+  },
+  panResult: { alignItems: 'flex-end' },
+  panStatus: { fontSize: 14, fontWeight: '600' },
+  panShares: {
+    fontSize: 12,
+    color: isDark ? '#94A3B8' : '#64748B',
+    marginTop: 2,
   },
   inlineLoader: {
     paddingVertical: 16,
