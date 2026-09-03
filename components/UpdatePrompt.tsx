@@ -25,6 +25,8 @@ export function UpdatePrompt() {
 
   useEffect(() => {
     if (__DEV__ || !Updates.isEnabled) return;
+    // Once downloaded there is nothing more to check for
+    if (ready) return;
 
     let cancelled = false;
 
@@ -45,7 +47,7 @@ export function UpdatePrompt() {
     check();
 
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && !ready) check();
+      if (state === 'active') check();
     });
 
     return () => {
