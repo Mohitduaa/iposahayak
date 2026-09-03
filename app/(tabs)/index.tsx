@@ -12,9 +12,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Search } from 'lucide-react-native';
+import { Calendar, TrendingUp, Clock, Search } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { IPOCard } from '@/components/IPOCard';
+import { StatsCard } from '@/components/StatsCard';
 import { FilterChips } from '@/components/FilterChips';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
@@ -179,14 +180,7 @@ export default function IPODashboard() {
             showingSkeleton ? (
               <SkeletonLoader type="card" count={3} />
             ) : (
-              // An empty Live tab is worth little on its own; what the reader
-              // wants next is the issues that are still to come.
-              <EmptyState
-                type={selectedFilter}
-                onRefresh={onRefresh}
-                upcomingCount={stats.upcoming}
-                onGoToUpcoming={() => setSelectedFilter('upcoming')}
-              />
+              <EmptyState type={selectedFilter} onRefresh={onRefresh} />
             )
           }
           ListFooterComponent={
@@ -198,44 +192,68 @@ export default function IPODashboard() {
           }
           ListHeaderComponent={
             <>
-        {/* Board filter.
-            Two buttons that each toggled themselves off left "All" as a state
-            with nothing selected, so the control never showed where you were.
-            Three options, one of them always on. */}
+        {/* Board Type Toggle */}
         <View style={styles.toggleWrapper}>
           <View style={styles.toggleContainer}>
-            {(['all', 'mainboard', 'sme'] as const).map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={[styles.toggleOption, boardType === option && styles.toggleOptionActive]}
-                onPress={() => {
-                  if (boardType === option) return;
-                  setBoardLoading(true);
-                  setBoardType(option);
-                  setTimeout(() => setBoardLoading(false), 150);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.toggleOptionText,
-                    boardType === option && styles.toggleOptionTextActive,
-                  ]}
-                >
-                  {option === 'all' ? 'All' : option === 'sme' ? 'SME' : 'Mainboard'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity 
+              style={[
+                styles.toggleOption, 
+                boardType === 'mainboard' && styles.toggleOptionActive,
+                boardType === 'mainboard' && styles.mainboardActive
+              ]}
+              onPress={() => {
+                setBoardLoading(true);
+                setBoardType(boardType === 'mainboard' ? 'all' : 'mainboard');
+                setTimeout(() => setBoardLoading(false), 150);
+              }}
+            >
+              <Text style={[styles.toggleOptionText, boardType === 'mainboard' && styles.toggleOptionTextActive]}>Mainboard</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[
+                styles.toggleOption, 
+                boardType === 'sme' && styles.toggleOptionActive,
+                boardType === 'sme' && styles.smeActive
+              ]}
+              onPress={() => {
+                setBoardLoading(true);
+                setBoardType(boardType === 'sme' ? 'all' : 'sme');
+                setTimeout(() => setBoardLoading(false), 150);
+              }}
+            >
+              <Text style={[styles.toggleOptionText, boardType === 'sme' && styles.toggleOptionTextActive]}>SME</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* The counts used to sit in a row of cards directly above tabs that
-            said the same words, so the screen showed "Upcoming 10" twice and
-            spent a third of its height doing it. They live on the tabs now.
-            "Avg GMP" is gone: an average of premiums across issues priced from
-            ₹59 to ₹1,080 is not a number anyone can use. */}
+        {/* Stats Cards */}
+        <View style={styles.statsContainer}>
+          <StatsCard
+            title="Upcoming"
+            value={(stats.upcoming || 0).toString()}
+            icon={<Calendar size={20} color="#60A5FA" />}
+            color="#60A5FA"
+            onPress={() => setSelectedFilter('upcoming')}
+          />
+          <StatsCard
+            title="Live IPOs"
+            value={(stats.ongoing || 0).toString()}
+            icon={<Clock size={20} color="#10B981" />}
+            color="#10B981"
+            onPress={() => setSelectedFilter('ongoing')}
+          />
+          <StatsCard
+            title="Avg GMP"
+            value={`₹${stats.avgGMP || 0}`}
+            icon={<TrendingUp size={20} color="#F59E0B" />}
+            color="#F59E0B"
+          />
+          
+        </View>
+
+        {/* Filter Chips */}
         <FilterChips
           selectedFilter={selectedFilter}
-          counts={{ upcoming: stats.upcoming, ongoing: stats.ongoing }}
           onFilterChange={(filter) => {
             setFilterLoading(true);
             setSelectedFilter(filter);
@@ -315,6 +333,13 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    gap: 12,
+  },
   filterContainer: {
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -350,8 +375,6 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
   },
-  // One selected style for all three, so the control looks like one control
-  // rather than changing colour depending on which option is on
   toggleOptionActive: {
     backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
     shadowColor: '#000',
@@ -366,8 +389,16 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     color: isDark ? '#94A3B8' : '#64748B',
   },
   toggleOptionTextActive: {
-    color: isDark ? '#F1F5F9' : '#1E293B',
+    color: '#FFFFFF',
     fontWeight: '600',
+  },
+  mainboardActive: {
+    backgroundColor: isDark ? '#60A5FA' : '#3B82F6',
+    borderColor: isDark ? '#60A5FA' : '#3B82F6',
+  },
+  smeActive: {
+    backgroundColor: isDark ? '#FB923C' : '#EA580C',
+    borderColor: isDark ? '#FB923C' : '#EA580C',
   },
 
   miniLoader: {

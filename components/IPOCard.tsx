@@ -141,21 +141,6 @@ export function IPOCard({ ipo }: IPOCardProps) {
     }
   };
 
-  /** Scraped fields arrive as "₹-", "-" or "" when the figure is not out yet. */
-  const hasValue = (value?: string | number) => {
-    const text = String(value ?? '').trim();
-    return text !== '' && text !== '-' && text !== '₹-' && text !== 'N/A';
-  };
-
-  const lotSizeNumber = Number(String(ipo.lotSize || '').replace(/[^0-9]/g, '')) || 0;
-
-  const hasGMP = Number(ipo.gmp) > 0;
-  const hasSubscription = hasValue(ipo.subscribed) && Number(ipo.subscribed) > 0;
-  const gmpTone = Number(ipo.gmp) > 0 ? '#10B981' : '#EF4444';
-  // The gain arrived pre-formatted as "₹205 (15.82%)" and was being wrapped in
-  // another set of brackets, printing "₹0 (₹- (0.00%))"
-  const gainLabel = hasValue(ipo.gain) && ipo.gain !== '0' ? String(ipo.gain).trim() : '';
-
   const styles = getStyles(isDark);
 
   return (
@@ -181,7 +166,21 @@ export function IPOCard({ ipo }: IPOCardProps) {
               <Text style={styles.companyName} numberOfLines={1}>
                 {ipo.companyName || ''}
               </Text>
-              <Text style={styles.category}>{ipo.category || ''}</Text>
+              <View style={styles.subRow}>
+                <Text style={styles.category}>{ipo.category || ''}</Text>
+                {/* Why this row is at the top of the Allotment tab. The API
+                    works both out; the card only reports them. */}
+                {ipo.listedToday && (
+                  <View style={[styles.todayTag, styles.listedTag]}>
+                    <Text style={styles.listedTagText}>Listed today</Text>
+                  </View>
+                )}
+                {!ipo.listedToday && ipo.allotmentToday && (
+                  <View style={[styles.todayTag, styles.allotmentTag]}>
+                    <Text style={styles.allotmentTagText}>Allotment today</Text>
+                  </View>
+                )}
+              </View>
             </View>
 
             <View style={{ alignItems: 'flex-end' }}>
@@ -199,20 +198,6 @@ export function IPOCard({ ipo }: IPOCardProps) {
                   {getStatusText(ipo.status)}
                 </Text>
               </View>
-
-              {/* Why this row is at the top of the Allotment tab. It belongs
-                  with the status badge — both answer "where is this issue
-                  today" — rather than beside the board name, which is a fact
-                  about the issue and never changes. */}
-              {ipo.listedToday ? (
-                <View style={[styles.todayTag, styles.listedTag]}>
-                  <Text style={styles.listedTagText}>Listed today</Text>
-                </View>
-              ) : ipo.allotmentToday ? (
-                <View style={[styles.todayTag, styles.allotmentTag]}>
-                  <Text style={styles.allotmentTagText}>Allotment today</Text>
-                </View>
-              ) : null}
             </View>
           </View>
 
@@ -227,38 +212,26 @@ export function IPOCard({ ipo }: IPOCardProps) {
               </Text>
             </View>
 
-            {/* A row is shown only when there is something in it. Printing
-                "Issue Price: ₹-" and "Lot Size: 0 shares" for an issue whose
-                terms are not out yet made the card look broken rather than
-                early. */}
-            {hasValue(ipo.issuePrice) && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Issue Price:</Text>
-                <Text style={styles.detailValue}>{ipo.issuePrice}</Text>
-              </View>
-            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Issue Price:</Text>
+              <Text style={styles.detailValue}>{ipo.issuePrice || ''}</Text>
+            </View>
 
-            {hasValue(ipo.allotment) && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Allotment Date:</Text>
-                <Text style={styles.detailValue}>{ipo.allotment}</Text>
-              </View>
-            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Allotment Date:</Text>
+              <Text style={styles.detailValue}>{ipo.allotment || ''}</Text>
+            </View>
 
-            {hasValue(ipo.listingDate) && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Listing Date:</Text>
-                <Text style={styles.detailValue}>{ipo.listingDate}</Text>
-              </View>
-            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Listing Date:</Text>
+              <Text style={styles.detailValue}>{ipo.listingDate || ''}</Text>
+            </View>
 
-            {lotSizeNumber > 0 && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Lot Size:</Text>
-                <Text style={styles.detailValue}>{lotSizeNumber.toLocaleString('en-IN')} shares</Text>
-              </View>
-            )}
-
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Lot Size:</Text>
+              <Text style={styles.detailValue}>{String(ipo.lotSize || 0)} shares</Text>
+            </View>
+            
             {/* Profit Per Lot */}
             {!!(ipo.gmp && ipo.issuePrice && ipo.lotSize) && (
               <View style={styles.detailRow}>
@@ -301,33 +274,40 @@ export function IPOCard({ ipo }: IPOCardProps) {
 
           </View>
 
-          {/* The footer only earns its place once there is a premium or a
-              subscription figure to report. The board name that used to sit
-              below it in a full-width coloured banner is already under the
-              company name — it was the same word twice on every card. */}
-          {(hasGMP || hasSubscription) && (
-            <View style={styles.footer}>
-              {hasGMP ? (
-                <View style={styles.gmpSection}>
-                  <TrendingUp size={16} color={gmpTone} />
-                  <Text style={styles.gmpLabel}>GMP</Text>
-                  <Text style={[styles.gmpValue, { color: gmpTone }]}>
-                    ₹{ipo.gmp}
-                    {gainLabel ? ` · ${gainLabel}` : ''}
-                  </Text>
-                </View>
-              ) : (
-                <View />
-              )}
-
-              {hasSubscription && (
-                <View style={styles.subscriptionSection}>
-                  <Users size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text style={styles.subscriptionText}>{ipo.subscribed}x</Text>
-                </View>
-              )}
+          <View style={styles.footer}>
+            <View style={styles.gmpSection}>
+              <TrendingUp
+                size={16}
+                color={ipo.gmp && ipo.gmp > 0 ? '#10B981' : '#EF4444'}
+              />
+              <Text style={styles.gmpLabel}>GMP:</Text>
+              <Text
+                style={[
+                  styles.gmpValue,
+                  { color: ipo.gmp && ipo.gmp > 0 ? '#10B981' : '#EF4444' },
+                ]}
+              >
+                ₹{String(ipo.gmp || 0)} ({ipo.gain || '0%'})
+              </Text>
             </View>
-          )}
+
+            <View style={styles.subscriptionSection}>
+              <Users size={16} color={isDark ? '#94A3B8' : '#64748B'} />
+              <Text style={styles.subscriptionText}>{String(ipo.subscribed || 0)}</Text>
+              {ipo.subscription?.retail > 50 && <Crown size={14} color="#F59E0B" />}
+            </View>
+          </View>
+
+          
+          {/* Board Type Badge */}
+          <View style={[
+            styles.boardTypeBadge,
+            ipo.category === 'SME' ? styles.smeBadge : styles.mainboardBadge
+          ]}>
+            <Text style={styles.boardTypeText}>
+              {ipo.category === 'SME' ? 'SME' : 'Mainboard'}
+            </Text>
+          </View>
         </TouchableOpacity>
       </ViewShot>
 
@@ -416,20 +396,16 @@ const getStyles = (isDark: boolean) =>
       marginLeft: 'auto',
       padding: 8,
     },
-    // Sits under the status badge in the right column. Solid rather than
-    // tinted, because unlike the status it is only true for one day and is the
-    // thing worth noticing on the card.
+    subRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
     todayTag: {
-      alignSelf: 'flex-end',
       paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-      marginTop: 6,
+      paddingVertical: 2,
+      borderRadius: 10,
     },
-    listedTag: { backgroundColor: '#DC2626' },
-    listedTagText: { fontSize: 10, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 },
-    allotmentTag: { backgroundColor: '#F59E0B' },
-    allotmentTagText: { fontSize: 10, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.3 },
+    listedTag: { backgroundColor: isDark ? 'rgba(139,92,246,0.18)' : '#EDE9FE' },
+    listedTagText: { fontSize: 11, fontWeight: '700', color: '#8B5CF6' },
+    allotmentTag: { backgroundColor: isDark ? 'rgba(245,158,11,0.18)' : '#FEF3C7' },
+    allotmentTagText: { fontSize: 11, fontWeight: '700', color: '#F59E0B' },
     statusBadge: {
       alignSelf: 'flex-start',
       paddingHorizontal: 8,
@@ -528,6 +504,23 @@ disabledButton: {
       alignItems: 'center',
       gap: 6,
       marginTop: 4,
+    },
+    boardTypeBadge: {
+      marginTop: 12,
+      paddingVertical: 8,
+      borderTopWidth: 1,
+      borderTopColor: isDark ? '#334155' : '#E2E8F0',
+      alignItems: 'center',
+      marginHorizontal: -16,
+      marginBottom: -16,
+      borderBottomLeftRadius: 16,
+      borderBottomRightRadius: 16,
+    },
+    mainboardBadge: {
+      backgroundColor: isDark ? '#60A5FA' : '#3B82F6',
+    },
+    smeBadge: {
+      backgroundColor: isDark ? '#FB923C' : '#EA580C',
     },
     boardTypeText: {
       fontSize: 12,
