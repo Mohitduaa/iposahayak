@@ -24,6 +24,9 @@ export interface IPO {
   };
   /** True once real subscription figures exist — before that there is nothing to show. */
   hasSubscriptionData: boolean;
+  /** Set by the closed-IPO endpoint, which orders the Allotment tab by them. */
+  listedToday?: boolean;
+  allotmentToday?: boolean;
   category: string;
   allotment: string;
   allotmentout?: string;

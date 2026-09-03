@@ -193,17 +193,6 @@ export default function AllotmentScreen() {
           </View>
         )}
 
-        {/* Something to read while nothing has been checked yet */}
-        {allotmentResults.length === 0 && savedPANs.length > 0 && (
-          <View style={styles.hintBox}>
-            <Text style={styles.hintTitle}>How this works</Text>
-            <Text style={styles.hintText}>
-              Pick the IPO, then check every saved PAN at once. Allotment is published by the
-              registrar on the allotment date — before that the registrar has nothing to return,
-              so a "no record found" answer on an earlier day is expected.
-            </Text>
-          </View>
-        )}
       </ScrollView>
 
       <AddPANModal

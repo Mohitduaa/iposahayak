@@ -197,6 +197,8 @@ export const mapAPIData = (data: any[]): IPO[] =>
           hni: parseQuota(item.hniQuota),
         },
         hasSubscriptionData: subscription.any || overallSubscribed > 0,
+        listedToday: Boolean(item.listedToday),
+        allotmentToday: Boolean(item.allotmentToday),
         allotmentout: String(item.allotment || ''),
         allotment: String(item.allotmentDate || ''),
         listingDate: String(item.listingDate || ''),
