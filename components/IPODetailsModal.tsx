@@ -9,11 +9,11 @@ import {
   ActivityIndicator,
   useColorScheme,
 } from 'react-native';
-import { X, TrendingUp, Building, Target, Search } from 'lucide-react-native';
+import { X, TrendingUp, Building, Target, Search, Clock } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { IPO } from '@/types';
 import { apiUrl, fetchJson } from '@/services/api';
-import { findRegistrarCompany } from '@/services/registrar';
+import { findRegistrarCompany, RegistrarCompany } from '@/services/registrar';
 import { useSavedPANs } from '@/hooks/useSavedPANs';
 
 interface IPODetailsModalProps {
@@ -48,6 +48,31 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
   const { savedPANs } = useSavedPANs();
   const [findingRegistrar, setFindingRegistrar] = useState(false);
   const [allotmentNote, setAllotmentNote] = useState<string>('');
+  const [registrar, setRegistrar] = useState<RegistrarCompany | null>(null);
+
+  // A registrar lists a company only once allotment is finalised, so its own
+  // list is the honest answer to "is the result out". Looked up when the sheet
+  // opens (the lists are cached) so the button can say so before it is tapped.
+  useEffect(() => {
+    if (!visible) return;
+
+    let cancelled = false;
+    setRegistrar(null);
+    setFindingRegistrar(true);
+
+    (async () => {
+      const company = await findRegistrarCompany(ipo.companyName);
+      if (cancelled) return;
+      setRegistrar(company);
+      setFindingRegistrar(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, ipo.companyName]);
+
+  const allotmentReady = Boolean(registrar);
 
   /**
    * Opens the results on their own screen. Ten or fifteen saved PANs make a
@@ -56,33 +81,28 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
    * finalised, so an unmatched lookup means the result is not out yet rather
    * than that something went wrong.
    */
-  const runAllotmentCheck = async () => {
-    setAllotmentNote('');
+  const runAllotmentCheck = () => {
+    if (!registrar) return;
 
     if (savedPANs.length === 0) {
       setAllotmentNote('Add a PAN on the Allotment tab first.');
       return;
     }
 
-    setFindingRegistrar(true);
-    const company = await findRegistrarCompany(ipo.companyName);
-    setFindingRegistrar(false);
-
-    if (!company) {
-      setAllotmentNote(
-        ipo.allotment
-          ? `${ipo.registrar || 'The registrar'} has not published this issue yet. Allotment is expected on ${ipo.allotment}.`
-          : `${ipo.registrar || 'The registrar'} has not published allotment for this issue yet.`
-      );
-      return;
-    }
-
+    setAllotmentNote('');
     // The sheet has to go first, or it sits over the screen being pushed
     onClose();
     router.push({
       pathname: '/allotment-result',
-      params: { name: ipo.companyName, company: company.value, type: company.companyType },
+      params: { name: ipo.companyName, company: registrar.value, type: registrar.companyType },
     } as never);
+  };
+
+  /** What the button says when there is nothing to check yet. */
+  const waitingLabel = () => {
+    if (findingRegistrar) return 'Checking availability…';
+    if (ipo.allotment) return `Allotment on ${ipo.allotment}`;
+    return 'Allotment not out yet';
   };
 
   // A different IPO in the same sheet must not keep the last one's message
@@ -201,24 +221,21 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
             whichever table it landed between. */}
         <View style={styles.actionBar}>
           <TouchableOpacity
-            style={[styles.checkButton, findingRegistrar && styles.checkButtonDisabled]}
+            style={[styles.checkButton, !allotmentReady && styles.checkButtonDisabled]}
             onPress={runAllotmentCheck}
-            disabled={findingRegistrar}
+            disabled={!allotmentReady}
             activeOpacity={0.85}
           >
             {findingRegistrar ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
+              <ActivityIndicator size="small" color={allotmentReady ? '#FFFFFF' : '#94A3B8'} />
+            ) : allotmentReady ? (
               <Search size={18} color="#FFFFFF" />
+            ) : (
+              <Clock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
             )}
-            <Text style={styles.checkButtonText}>
-              {findingRegistrar ? 'Checking…' : 'Check allotment'}
+            <Text style={[styles.checkButtonText, !allotmentReady && styles.checkButtonTextDisabled]}>
+              {allotmentReady ? 'Check allotment' : waitingLabel()}
             </Text>
-            {!findingRegistrar && savedPANs.length > 0 && (
-              <View style={styles.checkBadge}>
-                <Text style={styles.checkBadgeText}>{savedPANs.length}</Text>
-              </View>
-            )}
           </TouchableOpacity>
         </View>
 
@@ -621,17 +638,15 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 12,
   },
-  checkButtonDisabled: { opacity: 0.7 },
-  checkButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-  checkBadge: {
-    minWidth: 22,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
+  // Reads as unavailable rather than as a dimmed primary button, so it is
+  // clear the result is not out rather than that the tap failed.
+  checkButtonDisabled: {
+    backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+    borderWidth: 1,
+    borderColor: isDark ? '#334155' : '#E2E8F0',
   },
-  checkBadgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  checkButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  checkButtonTextDisabled: { color: isDark ? '#94A3B8' : '#64748B' },
   noteBar: {
     backgroundColor: isDark ? '#1E293B' : '#EFF6FF',
     borderBottomWidth: 1,
