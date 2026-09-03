@@ -75,19 +75,33 @@ const toggleNotifications = async () => {
     const appUrl = `market://details?id=${packageName}`;
     const webUrl = `https://play.google.com/store/apps/details?id=${packageName}`;
 
-    try {
-      if (await StoreReview.hasAction()) {
-        await StoreReview.requestReview();
-        return;
+    // Play's in-app sheet only appears in a build Play installed, and Play
+    // decides whether to show it at all. Everywhere else requestReview()
+    // resolves without displaying anything, so its success cannot be taken as
+    // proof that the reader saw a prompt — hence the store as a fallback.
+    if (Platform.OS === 'android' || Platform.OS === 'ios') {
+      try {
+        if (await StoreReview.isAvailableAsync()) {
+          await StoreReview.requestReview();
+          return;
+        }
+      } catch (error: any) {
+        console.warn('In-app review unavailable:', error?.message || error);
       }
+    }
 
-      if (Platform.OS === 'android' && (await Linking.canOpenURL(appUrl))) {
-        await Linking.openURL(appUrl);
-        return;
-      }
-      await Linking.openURL(webUrl);
+    // canOpenURL is not used for market:// — on Android 11 and later it
+    // answers false for any scheme missing from the manifest's <queries>,
+    // even when the intent would resolve, which sent every device to the
+    // browser instead of the Play app.
+    try {
+      await Linking.openURL(appUrl);
     } catch {
-      Alert.alert('Could not open the Play Store', webUrl);
+      try {
+        await Linking.openURL(webUrl);
+      } catch {
+        Alert.alert('Could not open the Play Store', webUrl);
+      }
     }
   };
 
