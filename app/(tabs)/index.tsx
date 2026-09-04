@@ -8,9 +8,9 @@ import {
   RefreshControl,
   TouchableOpacity,
   useColorScheme,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Calendar, TrendingUp, Clock, Search } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -27,6 +27,9 @@ import Loader from "@/components/Loader";
 export default function IPODashboard() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // The header paints behind the status bar, so the bar keeps the header's
+  // colour instead of showing a strip of the page background above it.
+  const insets = useSafeAreaInsets();
   const [selectedFilter, setSelectedFilter] = useState<'upcoming' | 'ongoing' | 'closed'>('ongoing');
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,11 +139,11 @@ export default function IPODashboard() {
   const styles = getStyles(isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <StatusBar style={isDark ? "light" : "dark"} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>IPO Dashboard</Text>
           <Text style={styles.headerSubtitle}>Track live and upcoming IPOs</Text>
@@ -279,9 +282,9 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 35,
+    paddingTop: 12,
     paddingBottom: 16,
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     borderBottomWidth: 1,
@@ -323,12 +326,12 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  // Was pinned at top: 70, a figure that only lined up with the old fixed
+  // header padding — once the header sizes itself to the status bar it landed
+  // over the content below. The header is a row, so let it place the icon.
   searchIconCorner: {
-    position: 'absolute',
-    top: 70,
-    right: 20,
     padding: 8,
-    zIndex: 10,
+    marginRight: -8,
   },
   scrollView: {
     flex: 1,

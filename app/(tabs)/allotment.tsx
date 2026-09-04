@@ -6,9 +6,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   useColorScheme,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Crown, Search, Plus } from 'lucide-react-native';
 import { useSavedPANs } from '@/hooks/useSavedPANs';
@@ -25,6 +25,9 @@ type RegistrarType = 'MUFGL' | 'BIGSHARE';
 export default function AllotmentScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // The header paints behind the status bar, so the bar keeps the header's
+  // colour instead of showing a strip of the page background above it.
+  const insets = useSafeAreaInsets();
 
   const [selectedIPO, setSelectedIPO] = useState<{ id: string; companyType: RegistrarType | ''; name?: string }>({
     id: '',
@@ -80,10 +83,10 @@ export default function AllotmentScreen() {
   const styles = getStyles(isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.headerTitle}>Allotment Check</Text>
           <Text style={styles.headerSubtitle}>Check your IPO allotment</Text>
@@ -227,7 +230,7 @@ const getStyles = (isDark: boolean) =>
       justifyContent: 'space-between',
       alignItems: 'flex-start',
       paddingHorizontal: 20,
-      paddingTop: 35,
+      paddingTop: 12,
       paddingBottom: 16,
       backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
       borderBottomWidth: 1,

@@ -8,14 +8,16 @@ import {
   Alert,
   ActivityIndicator,
   useColorScheme,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Link, router } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, User, TrendingUp } from 'lucide-react-native';
+import WebView from 'react-native-webview';
+import { Modal } from 'react-native';
 
 export default function SignupScreen() {
   const colorScheme = useColorScheme();
@@ -27,6 +29,8 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
+const [showWebView, setShowWebView] = useState(false);
 
   // Password visibility
   const [showPassword, setShowPassword] = useState(false);
@@ -72,7 +76,7 @@ export default function SignupScreen() {
     setLoading(true);
 
     try {
-      const res = await fetch('https://ipo-backend-live.onrender.com/api/auth/signup', {
+      const res = await fetch('https://api.iposahayak.com/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
@@ -103,7 +107,7 @@ export default function SignupScreen() {
     setOtpLoading(true);
 
     try {
-      const res = await fetch('https://ipo-backend-live.onrender.com/api/auth/verify-otp', {
+      const res = await fetch('https://api.iposahayak.com/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp }),
@@ -136,7 +140,7 @@ export default function SignupScreen() {
   const styles = getStyles(isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
       <KeyboardAvoidingView
@@ -256,11 +260,57 @@ export default function SignupScreen() {
                   {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.termsText}>
-                  I agree to the{' '}
-                  <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-                  <Text style={styles.termsLink}>Privacy Policy</Text>
-                </Text>
+  I agree to the{' '}
+  <Text
+    style={styles.termsLink}
+    onPress={() => {
+      setWebViewUrl('https://www.iposahayak.com/terms-conditions');
+      setShowWebView(true);
+    }}
+  >
+    Terms of Service
+  </Text>{' '}
+  and{' '}
+  <Text
+    style={styles.termsLink}
+    onPress={() => {
+      setWebViewUrl('https://www.iposahayak.com/privacy-policy');
+      setShowWebView(true);
+    }}
+  >
+    Privacy Policy
+  </Text>
+</Text>
+
               </TouchableOpacity>
+<Modal
+  visible={showWebView}
+  animationType="slide"
+  onRequestClose={() => setShowWebView(false)}
+>
+  <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <TouchableOpacity
+      style={{
+        position: 'absolute',
+        top: 40,
+        right: 20,
+        zIndex: 10,
+        backgroundColor: '#1E40AF',
+        padding: 10,
+        borderRadius: 25,
+      }}
+      onPress={() => setShowWebView(false)}
+    >
+      <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
+    </TouchableOpacity>
+
+    <WebView
+      source={{ uri: webViewUrl || 'https://www.iposahayak.com' }}
+      style={{ flex: 1 }}
+    />
+  </View>
+</Modal>
+
 
               {/* Signup Button */}
               <TouchableOpacity
@@ -311,16 +361,16 @@ export default function SignupScreen() {
           {!otpSent && (
             <>
               {/* Divider */}
-              <View style={styles.divider}>
+              {/* <View style={styles.divider}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>or</Text>
                 <View style={styles.dividerLine} />
-              </View>
+              </View> */}
 
               {/* Social Signup */}
-              <TouchableOpacity style={styles.socialButton}>
+              {/* <TouchableOpacity style={styles.socialButton}>
                 <Text style={styles.socialButtonText}>Continue with Google</Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
 
               {/* Login Link */}
               <View style={styles.loginContainer}>
@@ -385,6 +435,7 @@ const getStyles = (isDark: boolean) =>
       gap: 8,
     },
     inputLabel: {
+      paddingTop:10,
       fontSize: 16,
       fontWeight: '600',
       color: isDark ? '#F1F5F9' : '#1E293B',
@@ -396,9 +447,9 @@ const getStyles = (isDark: boolean) =>
       borderWidth: 1,
       borderColor: isDark ? '#334155' : '#E2E8F0',
       borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      gap: 12,
+      paddingHorizontal: 12,
+      height: 48,
+      gap: 8,
     },
     input: {
       flex: 1,

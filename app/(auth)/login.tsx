@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,48 +6,94 @@ import {
   TextInput,
   TouchableOpacity,
   useColorScheme,
-  SafeAreaView,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
-import { Link, router } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff, TrendingUp } from 'lucide-react-native';
-import { useGoogleAuth } from "../../hooks/useGoogleAuth";
+  ActivityIndicator,
+} from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from "expo-status-bar";
+import { Link, router } from "expo-router";
+import { Mail, Lock, Eye, EyeOff, TrendingUp } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useUser } from "@/hooks/useUser";
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const isDark = colorScheme === "dark";
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { userInfo, promptAsync } = useGoogleAuth();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
+  const { user, loading: userLoading, setUserFromLogin } = useUser();
+
+  // ✅ If already logged in → redirect
+  useEffect(() => {
+    if (!userLoading && user) {
+      router.dismissAll();
+      router.replace("/(tabs)");
+    }
+  }, [userLoading, user]);
+
+const handleLogin = async () => {
+  if (!email || !password) {
+    Alert.alert("Error", "Please fill in all fields");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const response = await fetch("https://api.iposahayak.com/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message || "Login failed");
+
+    if (data.token) {
+      await AsyncStorage.setItem("token", data.token);
     }
 
-    if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
+    if (data.user) {
+      await AsyncStorage.setItem("user", JSON.stringify(data.user));
     }
 
-    setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      // Navigate to main app
-      router.replace('/(tabs)');
-    }, 1500);
-  };
+    // ✅ Set user in context / state
+    await setUserFromLogin(data);
+
+    // ✅ Navigate and reset stack to prevent back to splash
+    router.dismissAll();
+    router.replace("/(tabs)");
+  } catch (error: any) {
+    Alert.alert("Login Error", error.message || "Something went wrong");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const styles = getStyles(isDark);
+
+  // ⏳ Show loader until user data checked
+  if (userLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color="#1E40AF" />
+          <Text style={{ marginTop: 10, color: isDark ? "#F1F5F9" : "#1E293B" }}>
+            Checking session...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -114,10 +160,11 @@ export default function LoginScreen() {
             </View>
 
             {/* Forgot Password */}
+            <Link href="/(auth)/ForgotResetPasswordScreen" asChild>
             <TouchableOpacity style={styles.forgotPassword}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
-
+             </Link>
             {/* Login Button */}
             <TouchableOpacity
               style={[styles.loginButton, loading && styles.loginButtonDisabled]}
@@ -130,19 +177,19 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             {/* Divider */}
-            <View style={styles.divider}>
+            {/* <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>or</Text>
               <View style={styles.dividerLine} />
-            </View>
+            </View> */}
 
             {/* Social Login */}
-            <TouchableOpacity
+            {/* <TouchableOpacity
   style={styles.socialButton}
   onPress={() => promptAsync()}  // ✅ This line triggers Google login
 >
   <Text style={styles.socialButtonText}>Continue with Google</Text>
-</TouchableOpacity>
+</TouchableOpacity> */}
 
 
             {/* Sign Up Link */}
@@ -217,9 +264,9 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: isDark ? '#334155' : '#E2E8F0',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
+    paddingHorizontal: 12,
+    height: 48,
+    gap: 8,
   },
   input: {
     flex: 1,

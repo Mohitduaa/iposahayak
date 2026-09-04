@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   Switch,
   useColorScheme,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Bell, Plus, Crown, Settings, Trash2 } from 'lucide-react-native';
 import { AlertCard } from '@/components/AlertCard';
@@ -18,6 +18,9 @@ import { useAlerts } from '@/hooks/useAlerts';
 export default function AlertsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // The header paints behind the status bar, so the bar keeps the header's
+  // colour instead of showing a strip of the page background above it.
+  const insets = useSafeAreaInsets();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(true);
   
@@ -26,11 +29,11 @@ export default function AlertsScreen() {
   const styles = getStyles(isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar style={isDark ? "light" : "dark"} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.headerTitle}>Alerts</Text>
           <Text style={styles.headerSubtitle}>Manage your notifications</Text>
@@ -137,7 +140,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 12,
     paddingBottom: 16,
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     borderBottomWidth: 1,

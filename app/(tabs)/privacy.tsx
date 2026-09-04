@@ -5,9 +5,9 @@ import {
   ScrollView,
   StyleSheet,
   useColorScheme,
-  SafeAreaView,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Shield, ArrowLeft, Mail, Phone, Globe } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -15,15 +15,18 @@ import { router } from 'expo-router';
 export default function PrivacyPolicyScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // The header paints behind the status bar, so the bar keeps the header's
+  // colour instead of showing a strip of the page background above it.
+  const insets = useSafeAreaInsets();
 
   const styles = getStyles(isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar style={isDark ? "light" : "dark"} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color={isDark ? '#F1F5F9' : '#1E293B'} />
         </TouchableOpacity>
@@ -80,21 +83,27 @@ export default function PrivacyPolicyScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>4. Data Security</Text>
             <Text style={styles.sectionText}>
-              We implement appropriate security measures to protect your personal information against 
-              unauthorized access, alteration, disclosure, or destruction. Your PAN numbers are encrypted 
-              and stored securely.
+             We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.
+            </Text>
+            <Text style={styles.sectionText}>
+              🔒Your PAN numbers are encrypted and securely stored only on your device’s local storage. They are never sent to or stored on our servers or databases, ensuring full privacy and control.
+
             </Text>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>5. Data Retention</Text>
             <Text style={styles.sectionText}>
-              We retain your information for as long as your account is active or as needed to provide 
-              services. You may delete your account and data at any time through the app settings.
+              We retain your information for as long as your account is active or as needed to provide services. 
+              🗑️ You may request deletion of your account and all associated data at any time by contacting us
+               at support@iposahayak.com . 
             </Text>
+                        <Text style={styles.sectionText}>
+               Once we receive your request, we will process it promptly and ensure your data is permanently removed.
+               </Text>
           </View>
 
-          <View style={styles.section}>
+          {/* <View style={styles.section}>
             <Text style={styles.sectionTitle}>6. Your Rights</Text>
             <Text style={styles.sectionText}>
               You have the right to:
@@ -105,22 +114,25 @@ export default function PrivacyPolicyScreen() {
               <Text style={styles.bulletItem}>• Opt-out of marketing communications</Text>
               <Text style={styles.bulletItem}>• Request data portability</Text>
             </View>
-          </View>
+          </View> */}
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>7. Contact Us</Text>
+            <Text style={styles.sectionTitle}>6. Contact Us</Text>
             <Text style={styles.sectionText}>
-              If you have any questions about this Privacy Policy, please contact us:
+             If you have any questions about this Privacy Policy, 
+             please contact us: 
+              support@iposahayak.com
+
             </Text>
             <View style={styles.contactInfo}>
-              <View style={styles.contactItem}>
+              {/* <View style={styles.contactItem}>
                 <Mail size={16} color="#60A5FA" />
                 <Text style={styles.contactText}>privacy@iposhayak.com</Text>
-              </View>
-              <View style={styles.contactItem}>
+              </View> */}
+              {/* <View style={styles.contactItem}>
                 <Globe size={16} color="#60A5FA" />
-                <Text style={styles.contactText}>www.iposhayak.com/privacy</Text>
-              </View>
+                <Text style={styles.contactText}>www.iposahayak.com/privacy</Text>
+              </View> */}
             </View>
           </View>
         </View>
@@ -138,7 +150,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 12,
     paddingBottom: 16,
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     borderBottomWidth: 1,

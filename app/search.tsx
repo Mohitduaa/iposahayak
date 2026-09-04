@@ -3,13 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TextInput,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   useColorScheme,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Search, ArrowLeft } from 'lucide-react-native';
 import { router } from 'expo-router';
@@ -20,6 +20,9 @@ import { IPO } from '@/types';
 export default function SearchScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // The header paints behind the status bar, so the bar keeps the header's
+  // colour instead of showing a strip of the page background above it.
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [closedResults, setClosedResults] = useState<IPO[]>([]);
   const [searching, setSearching] = useState(false);
@@ -68,11 +71,11 @@ export default function SearchScreen() {
   const styles = getStyles(isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar style={isDark ? "light" : "dark"} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color={isDark ? '#F1F5F9' : '#1E293B'} />
         </TouchableOpacity>
@@ -128,7 +131,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 12,
     paddingBottom: 16,
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     borderBottomWidth: 1,

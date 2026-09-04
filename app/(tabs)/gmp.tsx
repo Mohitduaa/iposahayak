@@ -6,10 +6,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   useColorScheme,
-  SafeAreaView,
   useWindowDimensions,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LineChart } from 'react-native-chart-kit';
 import { TrendingUp, TrendingDown, Calendar } from 'lucide-react-native';
@@ -24,6 +24,9 @@ import Loader from '@/components/Loader';
 export default function GMPTracker() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // The header paints behind the status bar, so the bar keeps the header's
+  // colour instead of showing a strip of the page background above it.
+  const insets = useSafeAreaInsets();
   // Read per render, so the chart is right after a rotation or in split screen.
   // Measured once at import it kept the width the app started with.
   const { width: screenWidth } = useWindowDimensions();
@@ -66,11 +69,11 @@ export default function GMPTracker() {
   const styles = getStyles(isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <StatusBar style={isDark ? "light" : "dark"} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View>
           <Text style={styles.headerTitle}>GMP Tracker</Text>
           <Text style={styles.headerSubtitle}>Grey Market Premium trends</Text>
@@ -154,7 +157,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingTop: 35,
+    paddingTop: 12,
     paddingBottom: 16,
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     borderBottomWidth: 1,

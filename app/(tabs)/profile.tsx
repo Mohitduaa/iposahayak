@@ -6,12 +6,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   useColorScheme,
-  SafeAreaView,
   Alert,
   Switch,
   Linking,
   Platform,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { User, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, Star, Bell } from 'lucide-react-native';
@@ -25,6 +25,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // The header paints behind the status bar, so the bar keeps the header's
+  // colour instead of showing a strip of the page background above it.
+  const insets = useSafeAreaInsets();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
 
@@ -148,9 +151,9 @@ const toggleNotifications = async () => {
   const styles = getStyles(isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={[]}>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
@@ -229,7 +232,7 @@ const toggleNotifications = async () => {
 
 const getStyles = (isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC' },
-  header: { paddingHorizontal: 20, paddingTop: 35, paddingBottom: 16, backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderBottomWidth: 1, borderBottomColor: isDark ? '#334155' : '#E2E8F0' },
+  header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16, backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderBottomWidth: 1, borderBottomColor: isDark ? '#334155' : '#E2E8F0' },
   headerTitle: { fontSize: 28, fontWeight: '700', color: isDark ? '#F1F5F9' : '#1E293B' },
   scrollView: { flex: 1, paddingBottom: 120 },
   userSection: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#1E293B' : '#FFFFFF', marginHorizontal: 16, marginTop: 20, padding: 20, borderRadius: 16, gap: 16 },

@@ -6,10 +6,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   useColorScheme,
-  SafeAreaView,
   TextInput,
   Alert,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { 
   CircleHelp as HelpCircle, 
@@ -34,6 +34,9 @@ interface FAQItem {
 export default function HelpSupportScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // The header paints behind the status bar, so the bar keeps the header's
+  // colour instead of showing a strip of the page background above it.
+  const insets = useSafeAreaInsets();
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [contactMessage, setContactMessage] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -60,48 +63,70 @@ export default function HelpSupportScreen() {
       answer: "Premium users get early GMP data, priority alerts, expert analysis, advanced filtering, unlimited PAN storage, and an ad-free experience."
     },
     {
-      question: "How do I set up alerts for new IPOs?",
-      answer: "Go to the Alerts tab, tap 'Add Alert', select 'New IPO Alerts', and enable notifications. You'll be notified whenever new IPOs are announced."
-    },
-    {
       question: "Is my PAN card information secure?",
-      answer: "Yes, all PAN card information is encrypted and stored securely. We only use it to check allotment status and never share it with third parties."
+      answer: "Yes, your PAN card information is securely encrypted and stored only on your device’s local storage. It is used solely to check IPO allotment status and is never shared with third parties or sent to our servers, ensuring your privacy and security."
     },
     {
       question: "Why am I not receiving notifications?",
-      answer: "Check your device notification settings and ensure notifications are enabled for the app. Also verify your alert preferences in the Alerts tab."
+      answer: "Check your device notification settings and ensure notifications are enabled for the app."
     }
   ];
 
-  const handleSendMessage = () => {
-    if (!contactEmail || !contactMessage) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+const [loading, setLoading] = useState(false);
 
-    if (!contactEmail.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
+const handleSendMessage = async () => {
+  if (!contactEmail || !contactMessage) {
+    Alert.alert('Error', 'Please fill in all fields');
+    return;
+  }
 
-    Alert.alert(
-      'Message Sent',
-      'Thank you for contacting us! We\'ll get back to you within 24 hours.',
-      [{ text: 'OK', onPress: () => {
-        setContactEmail('');
-        setContactMessage('');
-      }}]
-    );
-  };
+  if (!contactEmail.includes('@')) {
+    Alert.alert('Error', 'Please enter a valid email address');
+    return;
+  }
+
+  setLoading(true); // Start loading
+  try {
+    const response = await fetch('https://api.iposahayak.com/auth/help', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: contactEmail,
+        message: contactMessage,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      Alert.alert('Success', data.message, [
+        { text: 'OK', onPress: () => {
+            setContactEmail('');
+            setContactMessage('');
+          } 
+        },
+      ]);
+    } else {
+      Alert.alert('Error', data.message || 'Something went wrong');
+    }
+  } catch (error) {
+    console.error('Error sending message:', error);
+    Alert.alert('Error', 'Unable to send message. Please try again later.');
+  } finally {
+    setLoading(false); // Stop loading
+  }
+};
+
+
 
   const styles = getStyles(isDark);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar style={isDark ? "light" : "dark"} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color={isDark ? '#F1F5F9' : '#1E293B'} />
         </TouchableOpacity>
@@ -164,7 +189,7 @@ export default function HelpSupportScreen() {
                 <Mail size={20} color="#60A5FA" />
                 <View style={styles.contactInfo}>
                   <Text style={styles.contactTitle}>Email Support</Text>
-                  <Text style={styles.contactDetail}>support@ipotracker.com</Text>
+                  <Text style={styles.contactDetail}>support@iposahayak.com</Text>
                   <Text style={styles.contactTime}>Response within 24 hours</Text>
                 </View>
               </TouchableOpacity>
@@ -212,10 +237,17 @@ export default function HelpSupportScreen() {
                 />
               </View>
 
-              <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
-                <Send size={16} color="#FFFFFF" />
-                <Text style={styles.sendButtonText}>Send Message</Text>
-              </TouchableOpacity>
+              <TouchableOpacity
+  style={[styles.sendButton, loading && { opacity: 0.6 }]}
+  onPress={handleSendMessage}
+  disabled={loading}
+>
+  <Send size={16} color="#FFFFFF" />
+  <Text style={styles.sendButtonText}>
+    {loading ? 'Sending...' : 'Send Message'}
+  </Text>
+</TouchableOpacity>
+
             </View>
           </View>
 
@@ -236,7 +268,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 12,
     paddingBottom: 16,
     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
     borderBottomWidth: 1,
