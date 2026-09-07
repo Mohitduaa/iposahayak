@@ -41,7 +41,12 @@ export interface IPO {
 
 export interface AllotmentStatus {
   pan: string;
-  status: 'allotted' | 'not_allotted' | 'no_record';
+  /**
+   * unknown: the registrar returned a record but did not say whether shares
+   * were allotted. error: the lookup itself failed, see `message`.
+   */
+  status: 'allotted' | 'not_allotted' | 'no_record' | 'unknown' | 'error';
+  /** Shares applied for */
   shares?: number;
   amount?: number;
   refundAmount?: number;
@@ -50,6 +55,7 @@ export interface AllotmentStatus {
   applicationNo?: string;
   dpId?: string;
   allottedShares?: number;
+  message?: string;
 }
 
 export interface User {

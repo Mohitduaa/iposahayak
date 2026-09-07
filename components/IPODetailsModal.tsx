@@ -61,7 +61,7 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
     setFindingRegistrar(true);
 
     (async () => {
-      const company = await findRegistrarCompany(ipo.companyName);
+      const company = await findRegistrarCompany(ipo.companyName, ipo.registrar);
       if (cancelled) return;
       setRegistrar(company);
       setFindingRegistrar(false);
@@ -70,7 +70,7 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
     return () => {
       cancelled = true;
     };
-  }, [visible, ipo.companyName]);
+  }, [visible, ipo.companyName, ipo.registrar]);
 
   const allotmentReady = Boolean(registrar);
 

@@ -52,7 +52,7 @@ export default function HelpSupportScreen() {
     },
     {
       question: "How accurate are the allotment results?",
-      answer: "Our allotment results are fetched directly from official registrar websites (KFintech, Link Intime, etc.), ensuring 100% accuracy."
+      answer: "Results come straight from the registrar's own website. MUFG Intime, KFin, Bigshare, Cameo, Skyline, Maashitla, Purva, Integrated and MAS are all supported, so what you see is what the registrar has on record."
     },
     {
       question: "Can I save multiple PAN cards?",

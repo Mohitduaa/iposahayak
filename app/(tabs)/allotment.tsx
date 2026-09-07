@@ -19,8 +19,8 @@ import { AddPANModal } from '@/components/AddPANModal';
 import { AllotmentResultsModal } from '@/components/AllotmentResultsModal';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { AllotmentStatus } from '@/types';
-
-type RegistrarType = 'MUFGL' | 'BIGSHARE';
+import { RegistrarType } from '@/services/registrar';
+import { describeStatus } from '@/components/allotmentStatus';
 
 export default function AllotmentScreen() {
   const colorScheme = useColorScheme();
@@ -59,7 +59,8 @@ export default function AllotmentScreen() {
     const results = await checkAllotment(
       pansToCheck,
       selectedIPO.id,
-      selectedIPO.companyType as RegistrarType
+      selectedIPO.companyType as RegistrarType,
+      selectedIPO.name
     );
 
     setAllotmentResults(results);
@@ -158,9 +159,7 @@ export default function AllotmentScreen() {
 
             {allotmentResults.map((result, index) => {
               const allotted = result.status === 'allotted';
-              const noRecord = result.status === 'no_record';
-              const label = allotted ? 'Allotted' : noRecord ? 'No record' : 'Not allotted';
-              const tone = allotted ? '#10B981' : noRecord ? '#94A3B8' : '#EF4444';
+              const { label, tone } = describeStatus(result.status, isDark);
 
               // Prefer the name the registrar returned, then the saved label —
               // a bare PAN tells you nothing when several are saved.
@@ -186,8 +185,11 @@ export default function AllotmentScreen() {
                   </View>
                   <View style={styles.resultRight}>
                     <Text style={[styles.resultStatus, { color: tone }]}>{label}</Text>
-                    {allotted && !!result.shares && (
-                      <Text style={styles.resultMeta}>{result.shares} shares</Text>
+                    {allotted && !!result.allottedShares && (
+                      <Text style={styles.resultMeta}>{result.allottedShares} shares</Text>
+                    )}
+                    {result.status === 'error' && !!result.message && (
+                      <Text style={styles.resultMeta} numberOfLines={2}>{result.message}</Text>
                     )}
                   </View>
                 </View>

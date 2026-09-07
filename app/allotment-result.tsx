@@ -16,8 +16,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSavedPANs } from '@/hooks/useSavedPANs';
 import { useAllotmentCheck } from '@/hooks/useAllotmentCheck';
 import { AllotmentStatus } from '@/types';
-
-type RegistrarType = 'MUFGL' | 'BIGSHARE';
+import { RegistrarType } from '@/services/registrar';
+import { describeStatus } from '@/components/allotmentStatus';
 
 /**
  * A screen of its own for allotment results.
@@ -58,7 +58,8 @@ export default function AllotmentResultScreen() {
     const outcome = await checkAllotment(
       savedPANs.map((saved) => saved.pan),
       companyValue,
-      companyType
+      companyType,
+      ipoName
     );
     setResults(outcome);
     if (outcome.length === 0) setNote('The registrar returned no result. Try again shortly.');
@@ -81,8 +82,8 @@ export default function AllotmentResultScreen() {
   const renderRow = ({ item, index }: { item: AllotmentStatus; index: number }) => {
     const allotted = item.status === 'allotted';
     const noRecord = item.status === 'no_record';
-    const label = allotted ? 'Allotted' : noRecord ? 'No record' : 'Not allotted';
-    const tone = allotted ? '#10B981' : noRecord ? '#94A3B8' : '#EF4444';
+    const failed = item.status === 'error';
+    const { label, tone } = describeStatus(item.status, isDark);
 
     const person =
       item.name || savedPANs.find((saved) => saved.pan === item.pan)?.name || 'Saved PAN';
@@ -94,7 +95,7 @@ export default function AllotmentResultScreen() {
       { label: 'PAN', value: item.pan },
       ...(item.applicationNo ? [{ label: 'Application no.', value: String(item.applicationNo) }] : []),
       ...(item.dpId ? [{ label: 'DP / Client ID', value: String(item.dpId) }] : []),
-      ...(item.shares ? [{ label: allotted ? 'Shares applied' : 'Shares', value: String(item.shares) }] : []),
+      ...(item.shares ? [{ label: 'Shares applied', value: String(item.shares) }] : []),
       ...(item.allottedShares ? [{ label: 'Shares allotted', value: String(item.allottedShares) }] : []),
       ...(item.amount ? [{ label: 'Amount adjusted', value: `₹${item.amount}` }] : []),
       ...(item.refundAmount ? [{ label: 'Refund', value: `₹${item.refundAmount}` }] : []),
@@ -145,6 +146,17 @@ export default function AllotmentResultScreen() {
               <Text style={styles.detailNote}>
                 The registrar has no application against this PAN for this issue. If an
                 application was made, allotment for it may not be published yet.
+              </Text>
+            )}
+            {failed && (
+              <Text style={styles.detailNote}>
+                {item.message || 'The registrar did not answer.'} Tap refresh to try again.
+              </Text>
+            )}
+            {item.status === 'unknown' && (
+              <Text style={styles.detailNote}>
+                The registrar returned this application but did not say whether shares were
+                allotted. The fields above are exactly what it sent.
               </Text>
             )}
           </View>

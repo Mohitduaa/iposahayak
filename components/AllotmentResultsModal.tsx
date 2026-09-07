@@ -38,6 +38,20 @@ export function AllotmentResultsModal({ visible, onClose, results, ipoName }: Al
           color: '#EF4444',
           bgColor: isDark ? '#7F1D1D' : '#FEF2F2',
         };
+      case 'error':
+        return {
+          icon: <AlertCircle size={24} color="#F59E0B" />,
+          text: 'Could not check',
+          color: '#F59E0B',
+          bgColor: isDark ? '#78350F' : '#FFFBEB',
+        };
+      case 'unknown':
+        return {
+          icon: <AlertCircle size={24} color="#F59E0B" />,
+          text: 'Record found',
+          color: '#F59E0B',
+          bgColor: isDark ? '#78350F' : '#FFFBEB',
+        };
       default:
         return {
           icon: <AlertCircle size={24} color="#F59E0B" />,
@@ -49,7 +63,7 @@ export function AllotmentResultsModal({ visible, onClose, results, ipoName }: Al
   };
 
   const allottedCount = results.filter(r => r.status === 'allotted').length;
-  const totalShares = results.reduce((sum, r) => sum + (r.shares || 0), 0);
+  const totalShares = results.reduce((sum, r) => sum + (r.allottedShares || 0), 0);
   const totalAmount = results.reduce((sum, r) => sum + (r.amount || 0), 0);
 
   const styles = getStyles(isDark);
@@ -108,11 +122,13 @@ export function AllotmentResultsModal({ visible, onClose, results, ipoName }: Al
                   <Text style={styles.panText}>{result.pan}</Text>
                 </View>
 
-                {result.status === 'allotted' && result.shares && (
+                {result.status === 'allotted' && !!(result.allottedShares || result.shares) && (
                   <View style={styles.allotmentDetails}>
+
+                    <Text style={styles.detailLabel}>{result.name}</Text>
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Shares Allotted:</Text>
-                      <Text style={styles.detailValue}>{result.shares}</Text>
+                      <Text style={styles.detailValue}>{result.allottedShares ?? result.shares}</Text>
                     </View>
                     {result.amount && (
                       <View style={styles.detailRow}>
