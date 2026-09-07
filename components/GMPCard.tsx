@@ -60,10 +60,11 @@ export function GMPCard({ data, index = 0 }: GMPCardProps) {
         <Text style={styles.companyName} numberOfLines={1}>
           {data.companyName || 'N/A'}
         </Text>
+        {/* The move since the premium last changed, in rupees */}
         <View style={styles.changeContainer}>
           {getTrendIcon()}
           <Text style={[styles.changeText, { color: changeColor }]}>
-            {isPositive ? '+' : ''}{data.change || 0}
+            {isNeutral ? 'No change' : `${isPositive ? '+' : '-'}₹${Math.abs(data.change)}`}
           </Text>
         </View>
       </View>

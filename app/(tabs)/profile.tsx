@@ -79,12 +79,17 @@ const toggleNotifications = async () => {
     const webUrl = `https://play.google.com/store/apps/details?id=${packageName}`;
 
     // Play's in-app sheet only appears in a build Play installed, and Play
-    // decides whether to show it at all. Everywhere else requestReview()
-    // resolves without displaying anything, so its success cannot be taken as
-    // proof that the reader saw a prompt — hence the store as a fallback.
+    // decides whether to show it at all: it shows once, then quietly does
+    // nothing for weeks, and requestReview() resolves the same way either
+    // time. So the sheet is asked for on the first tap only; every tap after
+    // that goes to the store listing, where a rating can always be given or
+    // changed.
+    const ASKED_KEY = 'inAppReviewAskedAt';
     if (Platform.OS === 'android' || Platform.OS === 'ios') {
       try {
-        if (await StoreReview.isAvailableAsync()) {
+        const askedBefore = await AsyncStorage.getItem(ASKED_KEY);
+        if (!askedBefore && (await StoreReview.isAvailableAsync())) {
+          await AsyncStorage.setItem(ASKED_KEY, String(Date.now()));
           await StoreReview.requestReview();
           return;
         }

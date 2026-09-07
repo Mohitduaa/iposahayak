@@ -26,10 +26,22 @@ export interface GMPRow {
   dateRange: string;
   allotmentDate: string;
   listingDate: string;
-  /** Kept for older screens that read `change`. */
+  /** Every change to the premium the backend has seen, oldest first. */
+  history: GMPPoint[];
+  /** Rupee move since the previous recorded premium; 0 when there is none. */
   change: number;
+  /** That move as a share of the previous premium. */
+  changePercent: number;
+  /** When the premium last moved, ISO; empty when never. */
+  changedAt: string;
+  /** Kept for older screens: the premium as a share of the issue price. */
   percentage: number;
   kostak: number;
+}
+
+export interface GMPPoint {
+  gmp: number;
+  at: string;
 }
 
 type ChartData = { labels: string[]; datasets: { data: number[]; strokeWidth?: number }[] };
@@ -105,6 +117,16 @@ function buildRows(items: any[]): GMPRow[] {
       // most expensive shares on top rather than the strongest premiums.
       const gmpPercent = issuePrice > 0 ? (gmp / issuePrice) * 100 : 0;
 
+      // The trend the backend records, plus the move since the last point
+      // that differed from today's figure
+      const history: GMPPoint[] = (Array.isArray(item.gmpHistory) ? item.gmpHistory : [])
+        .map((point: any) => ({ gmp: Number(point?.gmp), at: String(point?.at || '') }))
+        .filter((point: GMPPoint) => Number.isFinite(point.gmp) && point.at);
+      const previous = [...history].reverse().find((point) => point.gmp !== gmp);
+      const latest = history[history.length - 1];
+      const change = previous ? gmp - previous.gmp : 0;
+      const changePercent = previous && previous.gmp !== 0 ? (change / Math.abs(previous.gmp)) * 100 : 0;
+
       return {
         companyName: item.name,
         gmp,
@@ -117,7 +139,10 @@ function buildRows(items: any[]): GMPRow[] {
         dateRange: item.date || '',
         allotmentDate: item.allotmentDate || '',
         listingDate: item.listingDate || '',
-        change: Math.round(gmpPercent * 10) / 10,
+        history,
+        change,
+        changePercent: Math.round(changePercent * 10) / 10,
+        changedAt: previous && latest ? latest.at : '',
         percentage: Math.round(gmpPercent * 10) / 10,
         kostak: 0,
       };
