@@ -27,6 +27,15 @@ export interface RegistrarCompany {
   companyType: RegistrarType;
   /** The registrar's display name, e.g. "KFin Technologies" */
   registrar: string;
+  /**
+   * True when the backend matched this row to an issue that closed in the
+   * last few weeks. Registrars keep companies listed for years; the picker
+   * shows only the current ones.
+   */
+  current: boolean;
+  /** Our own name for the issue, when matched */
+  ipoName?: string;
+  closeDate?: string;
 }
 
 let cache: { at: number; companies: RegistrarCompany[] } | null = null;
@@ -82,6 +91,9 @@ export async function loadRegistrarCompanies(): Promise<RegistrarCompany[]> {
           name: String(row.name),
           companyType: String(row.companyType).toUpperCase() as RegistrarType,
           registrar: String(row.registrar || row.companyType),
+          current: Boolean(row.current),
+          ipoName: row.ipoName ? String(row.ipoName) : undefined,
+          closeDate: row.closeDate ? String(row.closeDate) : undefined,
         }));
 
       if (companies.length) cache = { at: Date.now(), companies };
@@ -112,9 +124,10 @@ function bestMatch(ipoName: string, companies: RegistrarCompany[]): RegistrarCom
 
   const overlap = scored.find((row) => {
     const words = row.name.split(' ').filter((word) => word.length > 2);
-    if (!words.length) return false;
     const shorter = targetWords.length <= words.length ? targetWords : words;
     const longer = targetWords.length <= words.length ? words : targetWords;
+    // One shared word is not a match: "QT Foods" is not "Shivashrit Foods"
+    if (shorter.length < 2) return false;
     return shorter.every((word) => longer.includes(word));
   });
 

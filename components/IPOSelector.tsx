@@ -47,7 +47,8 @@ export function IPOSelector({ selectedIPO, onSelect, style }: IPOSelectorProps) 
           const parsed = JSON.parse(cached);
           // Older caches held two registrars under other keys; only rows that
           // name a registrar the backend knows can still be looked up
-          if (Array.isArray(parsed)) setCompanies(parsed.filter((row) => row?.registrar));
+          // (and, since then, a `current` flag)
+          if (Array.isArray(parsed)) setCompanies(parsed.filter((row) => row?.registrar && 'current' in row));
         }
       } catch (error) {
         console.warn('Could not read the cached company list:', error);
@@ -69,15 +70,20 @@ export function IPOSelector({ selectedIPO, onSelect, style }: IPOSelectorProps) 
     };
   }, []);
 
+  // Registrars keep companies listed for years. Only this season's issues
+  // belong in the picker; the backend marks them, newest close first.
+  const current = useMemo(() => companies.filter((company) => company.current), [companies]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return companies;
-    return companies.filter(
+    if (!needle) return current;
+    return current.filter(
       (company) =>
         company.name.toLowerCase().includes(needle) ||
+        (company.ipoName || '').toLowerCase().includes(needle) ||
         company.registrar.toLowerCase().includes(needle)
     );
-  }, [companies, query]);
+  }, [current, query]);
 
   const selectedIPOData = companies.find((ipo) => ipo.value === selectedIPO);
   const styles = getStyles(isDark);
@@ -151,8 +157,8 @@ export function IPOSelector({ selectedIPO, onSelect, style }: IPOSelectorProps) 
               )}
               ListEmptyComponent={
                 <Text style={styles.emptyText}>
-                  {companies.length === 0
-                    ? 'No IPO has allotment published right now.'
+                  {current.length === 0
+                    ? 'No recent IPO has its allotment published yet.'
                     : `Nothing matches "${query.trim()}".`}
                 </Text>
               }

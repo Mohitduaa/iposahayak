@@ -132,13 +132,13 @@ const toggleNotifications = async () => {
       icon: <Shield size={20} color={isDark ? '#94A3B8' : '#64748B'} />,
       title: 'Privacy Policy',
       subtitle: 'View privacy policy',
-      onPress: () => router.push('/(tabs)/privacy'),
+      onPress: () => router.push('/privacy'),
     },
     {
       icon: <HelpCircle size={20} color={isDark ? '#94A3B8' : '#64748B'} />,
       title: 'Help & Support',
       subtitle: 'Get help and contact support',
-      onPress: () => router.push('/(tabs)/help'),
+      onPress: () => router.push('/help'),
     },
     {
       icon: <Star size={20} color={isDark ? '#94A3B8' : '#64748B'} />,
