@@ -21,6 +21,7 @@ import { useSavedPANs } from '@/hooks/useSavedPANs';
 import * as Notifications from 'expo-notifications';
 import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {track} from '@/services/analytics';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
@@ -90,6 +91,7 @@ const toggleNotifications = async () => {
         const askedBefore = await AsyncStorage.getItem(ASKED_KEY);
         if (!askedBefore && (await StoreReview.isAvailableAsync())) {
           await AsyncStorage.setItem(ASKED_KEY, String(Date.now()));
+          track.rateApp('in_app');
           await StoreReview.requestReview();
           return;
         }
@@ -102,6 +104,7 @@ const toggleNotifications = async () => {
     // answers false for any scheme missing from the manifest's <queries>,
     // even when the intent would resolve, which sent every device to the
     // browser instead of the Play app.
+    track.rateApp('store');
     try {
       await Linking.openURL(appUrl);
     } catch {

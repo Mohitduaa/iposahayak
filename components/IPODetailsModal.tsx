@@ -15,6 +15,7 @@ import { IPO } from '@/types';
 import { apiUrl, fetchJson } from '@/services/api';
 import { findRegistrarCompany, RegistrarCompany } from '@/services/registrar';
 import { useSavedPANs } from '@/hooks/useSavedPANs';
+import { track } from '@/services/analytics';
 
 interface IPODetailsModalProps {
   ipo: IPO;
@@ -57,6 +58,7 @@ export function IPODetailsModal({ ipo, visible, onClose }: IPODetailsModalProps)
     if (!visible) return;
 
     let cancelled = false;
+    track.ipoOpened(ipo.companyName, ipo.status);
     setRegistrar(null);
     setFindingRegistrar(true);
 

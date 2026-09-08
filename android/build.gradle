@@ -9,6 +9,11 @@ buildscript {
     classpath('com.android.tools.build:gradle')
     classpath('com.facebook.react:react-native-gradle-plugin')
     classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
+    // Reads app/google-services.json, which is what Firebase Analytics needs
+    // to know which project it belongs to. Added by hand rather than through
+    // the config plugin: this android folder is checked in and carries edits
+    // a prebuild would throw away.
+    classpath('com.google.gms:google-services:4.4.2')
   }
 }
 

@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { OneSignal, LogLevel } from 'react-native-onesignal';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { useScreenTracking } from '@/hooks/useScreenTracking';
 import OfflineNotice from '@/components/OfflineNotice';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,6 +16,7 @@ import axios from 'axios';
 
 export default function RootLayout() {
   useFrameworkReady();
+  useScreenTracking();
 
   // 🔹 OneSignal init
   //

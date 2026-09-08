@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "754425793881",
+    "project_id": "iposhayak",
+    "storage_bucket": "iposhayak.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:754425793881:android:a2a4d2fc8c0aaae7edd048",
+        "android_client_info": {
+          "package_name": "com.iposahayak"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqm7PdHrRKXZw1B6VIZC9-wJF4uWBnh3E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

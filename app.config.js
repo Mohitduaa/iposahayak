@@ -23,7 +23,8 @@ export default {
       edgeToEdge: true,
       // expo-store-review reads this for its own fallback when the in-app
       // review sheet cannot be shown
-      playStoreUrl: "https://play.google.com/store/apps/details?id=com.iposahayak"
+      playStoreUrl: "https://play.google.com/store/apps/details?id=com.iposahayak",
+      googleServicesFile: "./google-services.json"
     },
     web: {
       bundler: "metro",
@@ -34,7 +35,11 @@ export default {
       ["onesignal-expo-plugin", { mode: "development" }],
       "expo-router",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-firebase/app",
+      // Firebase's own SDKs are static frameworks; without this the iOS build
+      // fails and the Android one links the wrong way round
+      ["expo-build-properties", { ios: { useFrameworks: "static" } }]
     ],
     experiments: {
       typedRoutes: true

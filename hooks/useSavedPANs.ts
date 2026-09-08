@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {track} from '@/services/analytics';
 
 // One list of saved PANs, shared by every screen that reads it.
 //
@@ -77,6 +78,7 @@ export function addPAN(pan: string, name?: string): boolean {
     { pan: clean, name: name || `Account ${savedPANs.length + 1}`, addedDate: new Date().toISOString() },
   ]);
   persist(savedPANs);
+  track.panSaved(savedPANs.length);
   return true;
 }
 

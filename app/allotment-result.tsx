@@ -18,6 +18,7 @@ import { useAllotmentCheck } from '@/hooks/useAllotmentCheck';
 import { AllotmentStatus } from '@/types';
 import { RegistrarType } from '@/services/registrar';
 import { describeStatus } from '@/components/allotmentStatus';
+import { track } from '@/services/analytics';
 
 /**
  * A screen of its own for allotment results.
@@ -55,6 +56,7 @@ export default function AllotmentResultScreen() {
     }
 
     setNote('');
+    track.allotmentChecked(companyType, ipoName, savedPANs.length);
     const outcome = await checkAllotment(
       savedPANs.map((saved) => saved.pan),
       companyValue,
@@ -62,6 +64,12 @@ export default function AllotmentResultScreen() {
       ipoName
     );
     setResults(outcome);
+    track.allotmentResult(
+      companyType,
+      outcome.filter((row) => row.status === 'allotted').length,
+      outcome.filter((row) => row.status === 'not_allotted').length,
+      outcome.filter((row) => row.status === 'no_record').length
+    );
     if (outcome.length === 0) setNote('The registrar returned no result. Try again shortly.');
   }, [companyValue, companyType, savedPANs]);
 
