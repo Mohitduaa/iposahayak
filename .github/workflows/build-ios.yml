@@ -51,14 +51,25 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            EXPANDED_CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            COMPILER_INDEX_STORE_ENABLE=NO \
             build
 
       - name: Package App into IPA
         run: |
+          APP_PATH=$(find "$RUNNER_TEMP/DerivedData" -name "IpoShayak.app" -type d | head -n 1)
+          echo "Found compiled app at: $APP_PATH"
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: IpoShayak.app not found!"
+            exit 1
+          fi
           mkdir -p "$RUNNER_TEMP/Payload"
-          cp -R "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/IpoShayak.app" "$RUNNER_TEMP/Payload/"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/Payload/"
           cd "$RUNNER_TEMP"
-          zip -r "$GITHUB_WORKSPACE/IpoShayak.ipa" Payload
+          zip -qr "$GITHUB_WORKSPACE/IpoShayak.ipa" Payload
+          ls -lh "$GITHUB_WORKSPACE/IpoShayak.ipa"
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
