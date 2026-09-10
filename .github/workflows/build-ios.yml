@@ -17,8 +17,12 @@ jobs:
 
       - name: Select Xcode 16.2
         run: |
-          sudo xcode-select -switch /Applications/Xcode_16.2.app/Contents/Developer || sudo xcode-select -switch /Applications/Xcode_16.app/Contents/Developer || true
+          sudo xcode-select -switch /Applications/Xcode_16.2.app
           xcodebuild -version
+
+      - name: Install iOS Platform Runtime
+        run: |
+          sudo xcodebuild -downloadPlatform iOS
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
