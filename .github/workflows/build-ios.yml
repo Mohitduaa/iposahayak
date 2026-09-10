@@ -43,16 +43,15 @@ jobs:
       - name: Build Xcode App (Unsigned)
         run: |
           cd ios
-          # Find the actual iOS SDK version available
-          SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
-          echo "Using SDK: $SDK"
+          # Use 'iphoneos' WITHOUT version number to skip platform validation
+          # -destination removed intentionally (causes "platform not installed" error)
           xcodebuild \
             -workspace IpoShayak.xcworkspace \
             -scheme IpoShayak \
             -configuration Release \
-            -sdk "$SDK" \
-            -destination 'generic/platform=iOS' \
+            -sdk iphoneos \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            ONLY_ACTIVE_ARCH=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
