@@ -20,9 +20,8 @@ jobs:
           sudo xcode-select -switch /Applications/Xcode_16.2.app
           xcodebuild -version
 
-      - name: Install iOS Platform Runtime
-        run: |
-          sudo xcodebuild -downloadPlatform iOS
+      - name: Show available SDKs
+        run: xcodebuild -showsdks
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,9 +31,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
-
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
 
       - name: Generate iOS native project (Expo Prebuild)
         run: npx expo prebuild --platform ios --clean
@@ -47,9 +43,14 @@ jobs:
       - name: Build Xcode App (Unsigned)
         run: |
           cd ios
-          xcodebuild -workspace IpoShayak.xcworkspace \
+          # Find the actual iOS SDK version available
+          SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
+          echo "Using SDK: $SDK"
+          xcodebuild \
+            -workspace IpoShayak.xcworkspace \
             -scheme IpoShayak \
             -configuration Release \
+            -sdk "$SDK" \
             -destination 'generic/platform=iOS' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
