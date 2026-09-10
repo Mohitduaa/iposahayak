@@ -6,23 +6,17 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  FIREBASE_SDK_VERSION: '10.28.0'
+
 jobs:
   build-ios:
     name: Build Unsigned iOS IPA
-    runs-on: macos-15
+    runs-on: macos-14
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Select Xcode 16
-        run: |
-          sudo xcode-select -s /Applications/Xcode_16.1.app 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.0.app 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.app 2>/dev/null || true
-          xcodebuild -version
-
-      - name: Ensure iOS Platform is Installed
-        run: |
-          xcodebuild -downloadPlatform iOS || true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,29 +33,21 @@ jobs:
       - name: Generate iOS native project (Expo Prebuild)
         run: npx expo prebuild --platform ios --clean
 
-      - name: Configure Podfile for Swift compatibility
+      - name: Pin Firebase to stable 10.28.0 (Xcode 15 compatible)
         run: |
           node -e '
           const fs = require("fs");
           const podfilePath = "ios/Podfile";
           if (fs.existsSync(podfilePath)) {
             let content = fs.readFileSync(podfilePath, "utf8");
-            const patch = `
-              installer.pods_project.targets.each do |target|
-                target.build_configurations.each do |config|
-                  config.build_settings["OTHER_SWIFT_FLAGS"] ||= ["$(inherited)"]
-                  config.build_settings["OTHER_SWIFT_FLAGS"] << "-enable-experimental-feature"
-                  config.build_settings["OTHER_SWIFT_FLAGS"] << "AccessLevelOnImport"
-                end
-              end
-            `;
-            if (content.includes("post_install do |installer|")) {
-              content = content.replace("post_install do |installer|", "post_install do |installer|\n" + patch);
-            } else {
-              content += "\npost_install do |installer|\n" + patch + "\nend\n";
-            }
+            const pin = `
+          pod "FirebaseCoreInternal", "10.28.0"
+          pod "Firebase/CoreOnly", "10.28.0"
+          pod "Firebase/Analytics", "10.28.0"
+          `;
+            content = content.replace("use_expo_modules!", pin + "\n  use_expo_modules!");
             fs.writeFileSync(podfilePath, content);
-            console.log("Podfile successfully patched for Swift compatibility");
+            console.log("Successfully pinned Firebase to 10.28.0");
           }
           '
 
@@ -76,7 +62,6 @@ jobs:
           xcodebuild -workspace IpoShayak.xcworkspace \
             -scheme IpoShayak \
             -configuration Release \
-            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/IpoShayak.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
