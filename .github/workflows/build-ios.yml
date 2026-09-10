@@ -6,17 +6,19 @@ on:
       - main
   workflow_dispatch:
 
-env:
-  FIREBASE_SDK_VERSION: '10.28.0'
-
 jobs:
   build-ios:
     name: Build Unsigned iOS IPA
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Select Xcode 16.2 (with installed iOS platform)
+        run: |
+          sudo xcode-select -switch /Applications/Xcode_16.2.app/Contents/Developer || sudo xcode-select -switch /Applications/Xcode_16.app/Contents/Developer || true
+          xcodebuild -version
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,24 +34,6 @@ jobs:
 
       - name: Generate iOS native project (Expo Prebuild)
         run: npx expo prebuild --platform ios --clean
-
-      - name: Pin Firebase to stable 10.28.0 (Xcode 15 compatible)
-        run: |
-          node -e '
-          const fs = require("fs");
-          const podfilePath = "ios/Podfile";
-          if (fs.existsSync(podfilePath)) {
-            let content = fs.readFileSync(podfilePath, "utf8");
-            const pin = `
-          pod "FirebaseCoreInternal", "10.28.0"
-          pod "Firebase/CoreOnly", "10.28.0"
-          pod "Firebase/Analytics", "10.28.0"
-          `;
-            content = content.replace("use_expo_modules!", pin + "\n  use_expo_modules!");
-            fs.writeFileSync(podfilePath, content);
-            console.log("Successfully pinned Firebase to 10.28.0");
-          }
-          '
 
       - name: Install CocoaPods
         run: |
