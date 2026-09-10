@@ -38,7 +38,16 @@ export function FilterChips({ selectedFilter, onFilterChange, style }: FilterChi
             ]}
             onPress={() => onFilterChange(filter.key)}
           >
+            {/*
+              Three segments share the row, so "Allotment" only has a third of
+              the width. At the largest system font it wrapped to "Allotmen / t"
+              and the control grew to two lines. One line plus a capped
+              multiplier keeps it a segmented control at every setting, while
+              leaving the normal setting exactly as designed.
+            */}
             <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.2}
               style={[
                 styles.segmentText,
                 selectedFilter === filter.key && styles.selectedSegmentText,
@@ -66,7 +75,7 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   segment: {
     flex: 1,
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     borderRadius: 8,
     alignItems: 'center',
   },

@@ -1,4 +1,4 @@
-package com.mohit.boltexpo
+package com.iposahayak
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

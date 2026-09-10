@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { GMPDetailsModal } from '@/components/GMPDetailsModal';
+import { router } from 'expo-router';
 
 // Only the first screenful cascades in; see IPOCard for why
 const STAGGERED_CARDS = 8;
@@ -33,7 +33,6 @@ interface GMPCardProps {
 export function GMPCard({ data, index = 0 }: GMPCardProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const [showDetails, setShowDetails] = useState(false);
 
   const isPositive = data.change > 0;
   const isNeutral = data.change === 0;
@@ -55,7 +54,12 @@ export function GMPCard({ data, index = 0 }: GMPCardProps) {
           index < STAGGERED_CARDS ? FadeInDown.duration(260).delay(index * 45) : undefined
         }
       >
-      <TouchableOpacity style={styles.container} onPress={() => setShowDetails(true)} activeOpacity={0.9}>
+      <TouchableOpacity style={styles.container} onPress={() =>
+          router.push({
+            pathname: '/gmp-detail/[name]',
+            params: { name: data.companyName, data: JSON.stringify(data) },
+          })
+        } activeOpacity={0.9}>
       <View style={styles.header}>
         <Text style={styles.companyName} numberOfLines={1}>
           {data.companyName || 'N/A'}
@@ -114,12 +118,6 @@ export function GMPCard({ data, index = 0 }: GMPCardProps) {
       </View>
     </TouchableOpacity>
       </Animated.View>
-
-      <GMPDetailsModal
-        data={data}
-        visible={showDetails}
-        onClose={() => setShowDetails(false)}
-      />
     </>
   );
 }

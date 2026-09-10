@@ -173,7 +173,15 @@ const toggleNotifications = async () => {
           </View>
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{user?.name || 'User Name'}</Text>
-            <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
+            {/*
+              An address has no spaces to break at, so at a large system font it
+              split after "@gmail" and dropped ".com" onto a line of its own.
+              One line with an ellipsis reads as a truncated address, which is
+              what it is; the full value is not something you read off this card.
+            */}
+            <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">
+              {user?.email || 'user@example.com'}
+            </Text>
           </View>
         </View>
 

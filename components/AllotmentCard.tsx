@@ -54,19 +54,19 @@ export function AllotmentCard({ result }: AllotmentCardProps) {
             {statusInfo.text}
           </Text>
         </View>
-        <Text style={styles.panText}>{result.pan}</Text>
+        <Text style={styles.panText}>{result.pan || 'N/A'}</Text>
       </View>
 
       {result.status === 'allotted' && result.shares && (
         <View style={styles.allotmentDetails}>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Shares Allotted:</Text>
-            <Text style={styles.detailValue}>{result.shares}</Text>
+            <Text style={styles.detailValue}>{result.shares || '0'}</Text>
           </View>
           {result.amount && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Amount:</Text>
-              <Text style={styles.detailValue}>₹{result.amount.toLocaleString()}</Text>
+              <Text style={styles.detailValue}>₹{(result.amount || 0).toLocaleString()}</Text>
             </View>
           )}
         </View>
@@ -75,7 +75,7 @@ export function AllotmentCard({ result }: AllotmentCardProps) {
       {result.refundAmount && result.refundAmount > 0 && (
         <View style={styles.refundSection}>
           <Text style={styles.refundLabel}>Refund Amount:</Text>
-          <Text style={styles.refundValue}>₹{result.refundAmount.toLocaleString()}</Text>
+          <Text style={styles.refundValue}>₹{(result.refundAmount || 0).toLocaleString()}</Text>
         </View>
       )}
     </View>
@@ -102,8 +102,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     gap: 8,
   },
   statusText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   panText: {
     fontSize: 14,
@@ -127,8 +127,8 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     color: isDark ? '#94A3B8' : '#64748B',
   },
   detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: 'bold',
     color: isDark ? '#F1F5F9' : '#1E293B',
   },
   refundSection: {

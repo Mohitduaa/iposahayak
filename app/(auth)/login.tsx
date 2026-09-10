@@ -1,345 +1,192 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from "expo-status-bar";
-import { Link, router } from "expo-router";
-import { Mail, Lock, Eye, EyeOff, TrendingUp } from "lucide-react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useUser } from "@/hooks/useUser";
+// Sign in: Google first, email and password under it.
+//
+// Both roads end in the same place — setUserFromLogin with the token the
+// backend hands back — so everything past this screen treats a Google
+// account and an email account alike.
 
-export default function LoginScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+import React, {useEffect, useRef, useState} from 'react'
+import {ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View} from 'react-native'
+import {Link, router} from 'expo-router'
+import {Lock, Mail} from 'lucide-react-native'
+import {useUser} from '@/hooks/useUser'
+import {postJson} from '@/services/authApi'
+import {GoogleSignInError, signInWithGoogle} from '@/services/googleSignIn'
+import {track} from '@/services/analytics'
+import AuthScreen from '@/components/auth/AuthScreen'
+import AuthInput from '@/components/auth/AuthInput'
+import PrimaryButton from '@/components/auth/PrimaryButton'
+import GoogleButton from '@/components/auth/GoogleButton'
+import OrDivider from '@/components/auth/OrDivider'
+import FormError from '@/components/auth/FormError'
+import {authPalette} from '@/components/auth/theme'
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-  const { user, loading: userLoading, setUserFromLogin } = useUser();
-
-  // ✅ If already logged in → redirect
-  useEffect(() => {
-    if (!userLoading && user) {
-      router.dismissAll();
-      router.replace("/(tabs)");
-    }
-  }, [userLoading, user]);
-
-const handleLogin = async () => {
-  if (!email || !password) {
-    Alert.alert("Error", "Please fill in all fields");
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const response = await fetch("https://api.iposahayak.com/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) throw new Error(data.message || "Login failed");
-
-    if (data.token) {
-      await AsyncStorage.setItem("token", data.token);
-    }
-
-    if (data.user) {
-      await AsyncStorage.setItem("user", JSON.stringify(data.user));
-    }
-
-    // ✅ Set user in context / state
-    await setUserFromLogin(data);
-
-    // ✅ Navigate and reset stack to prevent back to splash
-    router.dismissAll();
-    router.replace("/(tabs)");
-  } catch (error: any) {
-    Alert.alert("Login Error", error.message || "Something went wrong");
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const styles = getStyles(isDark);
-
-  // ⏳ Show loader until user data checked
-  if (userLoading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" color="#1E40AF" />
-          <Text style={{ marginTop: 10, color: isDark ? "#F1F5F9" : "#1E293B" }}>
-            Checking session...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style={isDark ? "light" : "dark"} />
-      
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <TrendingUp size={40} color="#1E40AF" />
-            </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to your IPO tracking account</Text>
-          </View>
-
-          {/* Form */}
-          <View style={styles.form}>
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email Address</Text>
-              <View style={styles.inputWrapper}>
-                <Mail size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                />
-              </View>
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <View style={styles.inputWrapper}>
-                <Lock size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                  ) : (
-                    <Eye size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Forgot Password */}
-            <Link href="/(auth)/ForgotResetPasswordScreen" asChild>
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </TouchableOpacity>
-             </Link>
-            {/* Login Button */}
-            <TouchableOpacity
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              <Text style={styles.loginButtonText}>
-                {loading ? 'Signing In...' : 'Sign In'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Divider */}
-            {/* <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View> */}
-
-            {/* Social Login */}
-            {/* <TouchableOpacity
-  style={styles.socialButton}
-  onPress={() => promptAsync()}  // ✅ This line triggers Google login
->
-  <Text style={styles.socialButtonText}>Continue with Google</Text>
-</TouchableOpacity> */}
-
-
-            {/* Sign Up Link */}
-            <View style={styles.signupContainer}>
-              <Text style={styles.signupText}>Don't have an account? </Text>
-              <Link href="/(auth)/signup" asChild>
-                <TouchableOpacity>
-                  <Text style={styles.signupLink}>Sign Up</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+interface Errors {
+  email?: string
+  password?: string
+  form?: string
 }
 
-const getStyles = (isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: isDark ? '#1E293B' : '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: isDark ? '#F1F5F9' : '#1E293B',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: isDark ? '#94A3B8' : '#64748B',
-    textAlign: 'center',
-  },
-  form: {
-    gap: 20,
-  },
-  inputContainer: {
-    gap: 8,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: isDark ? '#F1F5F9' : '#1E293B',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-    borderWidth: 1,
-    borderColor: isDark ? '#334155' : '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: isDark ? '#F1F5F9' : '#1E293B',
-  },
-  eyeButton: {
-    padding: 4,
-  },
-  forgotPassword: {
+export default function LoginScreen() {
+  const c = authPalette(useColorScheme() === 'dark')
+  const {user, loading: userLoading, setUserFromLogin} = useUser()
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [errors, setErrors] = useState<Errors>({})
+  const [busy, setBusy] = useState<'email' | 'google' | null>(null)
+  const passwordRef = useRef<TextInput>(null)
+
+  // Already signed in on this device: straight through
+  useEffect(() => {
+    if (!userLoading && user) router.replace('/(tabs)')
+  }, [userLoading, user])
+
+  const finish = async (data: {token: string; user: any}, method: 'email' | 'google') => {
+    await setUserFromLogin(data)
+    track.login(method)
+    router.replace('/(tabs)')
+  }
+
+  const validate = () => {
+    const next: Errors = {}
+    if (!email.trim()) next.email = 'Enter your email address'
+    else if (!EMAIL.test(email.trim())) next.email = 'That does not look like an email address'
+    if (!password) next.password = 'Enter your password'
+    setErrors(next)
+    return !next.email && !next.password
+  }
+
+  const handleEmail = async () => {
+    if (busy || !validate()) return
+    setBusy('email')
+    const reply = await postJson('/auth/login', {email: email.trim(), password})
+    if (!reply.ok || !reply.data?.token) {
+      setBusy(null)
+      setErrors({
+        form: reply.status === 400 ? 'Email or password is incorrect' : reply.data?.message || 'Sign in failed. Please try again.',
+      })
+      return
+    }
+    await finish(reply.data, 'email')
+  }
+
+  const handleGoogle = async () => {
+    if (busy) return
+    setErrors({})
+    setBusy('google')
+    try {
+      const google = await signInWithGoogle()
+      if (google.cancelled) return
+      const reply = await postJson('/auth/google', {idToken: google.idToken})
+      if (!reply.ok || !reply.data?.token) {
+        setErrors({form: reply.data?.message || 'Google sign-in failed. Please try again.'})
+        return
+      }
+      await finish(reply.data, 'google')
+    } catch (error: any) {
+      setErrors({form: error instanceof GoogleSignInError ? error.message : 'Google sign-in did not work. Please try again.'})
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  if (userLoading) {
+    return (
+      <AuthScreen title='Welcome back'>
+        <ActivityIndicator color={c.focus} style={{marginVertical: 40}} />
+      </AuthScreen>
+    )
+  }
+
+  return (
+    <AuthScreen
+      title='Welcome back'
+      subtitle='Sign in to track IPOs, GMP and your allotment.'
+      footer={
+        <View style={styles.footerRow}>
+          <Text style={[styles.footerText, {color: c.muted}]}>New to IPO Sahayak? </Text>
+          <Link href='/(auth)/signup' asChild>
+            <TouchableOpacity hitSlop={8}>
+              <Text style={[styles.footerLink, {color: c.link}]}>Create account</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
+      }
+    >
+      <GoogleButton onPress={handleGoogle} loading={busy === 'google'} disabled={busy === 'email'} />
+      <OrDivider label='or sign in with email' />
+
+      <AuthInput
+        label='Email'
+        icon={<Mail size={19} color={c.muted} />}
+        value={email}
+        onChangeText={(t) => {
+          setEmail(t)
+          if (errors.email || errors.form) setErrors((e) => ({...e, email: undefined, form: undefined}))
+        }}
+        error={errors.email}
+        placeholder='you@example.com'
+        keyboardType='email-address'
+        autoCapitalize='none'
+        autoCorrect={false}
+        autoComplete='email'
+        textContentType='emailAddress'
+        returnKeyType='next'
+        onSubmitEditing={() => passwordRef.current?.focus()}
+        editable={!busy}
+      />
+      <AuthInput
+        ref={passwordRef}
+        label='Password'
+        icon={<Lock size={19} color={c.muted} />}
+        value={password}
+        onChangeText={(t) => {
+          setPassword(t)
+          if (errors.password || errors.form) setErrors((e) => ({...e, password: undefined, form: undefined}))
+        }}
+        error={errors.password}
+        placeholder='Your password'
+        secure
+        autoCapitalize='none'
+        autoComplete='password'
+        textContentType='password'
+        returnKeyType='go'
+        onSubmitEditing={handleEmail}
+        editable={!busy}
+      />
+
+      <Link href='/(auth)/ForgotResetPasswordScreen' asChild>
+        <TouchableOpacity style={styles.forgot} hitSlop={8} disabled={!!busy}>
+          <Text style={[styles.forgotText, {color: c.link}]}>Forgot password?</Text>
+        </TouchableOpacity>
+      </Link>
+
+      <FormError message={errors.form} />
+
+      <PrimaryButton title='Sign In' onPress={handleEmail} loading={busy === 'email'} disabled={busy === 'google'} />
+    </AuthScreen>
+  )
+}
+
+const styles = StyleSheet.create({
+  forgot: {
     alignSelf: 'flex-end',
+    marginTop: -4,
+    marginBottom: 18,
   },
-  forgotPasswordText: {
-    fontSize: 14,
-    color: '#1E40AF',
-    fontWeight: '500',
-  },
-  loginButton: {
-    backgroundColor: '#1E40AF',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  loginButtonDisabled: {
-    opacity: 0.6,
-  },
-  loginButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-    gap: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: isDark ? '#334155' : '#E2E8F0',
-  },
-  dividerText: {
-    fontSize: 14,
-    color: isDark ? '#94A3B8' : '#64748B',
-  },
-  socialButton: {
-    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-    borderWidth: 1,
-    borderColor: isDark ? '#334155' : '#E2E8F0',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: isDark ? '#F1F5F9' : '#1E293B',
-  },
-  signupContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  signupText: {
-    fontSize: 16,
-    color: isDark ? '#94A3B8' : '#64748B',
-  },
-  signupLink: {
-    fontSize: 16,
-    color: '#1E40AF',
+  forgotText: {
+    fontSize: 13.5,
     fontWeight: '600',
   },
-});
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerText: {fontSize: 14},
+  footerLink: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+})

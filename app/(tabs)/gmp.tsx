@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  FlatList,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -64,6 +65,12 @@ export default function GMPTracker() {
       strokeWidth: '2',
       stroke: '#60A5FA',
     },
+    // Axis labels are SVG text, so they do not follow the system font setting;
+    // their only constraint is the width each of the six columns gets. At the
+    // default 12 they collided with one another.
+    propsForLabels: {
+      fontSize: 10,
+    },
   };
 
   const styles = getStyles(isDark);
@@ -84,63 +91,82 @@ export default function GMPTracker() {
         <SkeletonLoader type="card" count={6} />
       </ScrollView>
     ) : (
-      <ScrollView
+      <FlatList
+        // "All IPOs GMP" is the long list on this screen, and it used to render
+        // through .map() inside a ScrollView — every card built up front, with
+        // its own shadow and entrance animation, whether or not it was on
+        // screen. A FlatList builds only what is visible; the chart and the two
+        // short top-movers lists ride along as the header.
+        data={displayGMPData}
+        keyExtractor={(item, index) => `all-${item?.companyName ?? index}`}
+        renderItem={({ item, index }) => (
+          <View style={styles.listRow}>
+            <GMPCard data={item} index={index} />
+          </View>
+        )}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-      >
-        {/* Chart */}
-        {displayChartData.labels.length > 0 && (
-          <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>Live & Top IPOs GMP</Text>
-            <LineChart
-              data={displayChartData}
-              width={screenWidth - 40}
-              height={220}
-              chartConfig={chartConfig}
-              bezier
-              style={styles.chart}
-            />
-          </View>
-        )}
+        ListHeaderComponent={
+          <>
+            {/* Chart */}
+            {displayChartData.labels.length > 0 && (
+              <View style={styles.chartContainer}>
+                <Text style={styles.chartTitle}>Live & Top IPOs GMP</Text>
+                <LineChart
+                  data={displayChartData}
+                  // The card takes 16 of margin and 16 of padding on each side,
+                  // so the space actually available inside it is
+                  // screenWidth - 64. Passing -40 drew the chart 24px wider
+                  // than its container: the plot area and the last x-axis label
+                  // spilled past the card's rounded right edge.
+                  width={screenWidth - 64}
+                  height={220}
+                  chartConfig={chartConfig}
+                  bezier
+                  style={styles.chart}
+                />
+              </View>
+            )}
 
-        {/* Top Gainers */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <TrendingUp size={20} color="#10B981" />
-            <Text style={styles.sectionTitle}>Top Gainers</Text>
-          </View>
-          {displayTopGainers.map((item, index) => (
-            <GMPCard key={`gainer-${index}`} data={item} index={index} />
-          ))}
-        </View>
-
-        {/* Only shown when something is actually trading below issue price */}
-        {displayTopLosers.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <TrendingDown size={20} color="#EF4444" />
-              <Text style={styles.sectionTitle}>Top Losers</Text>
+            {/* Top Gainers */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <TrendingUp size={20} color="#10B981" />
+                <Text style={styles.sectionTitle}>Top Gainers</Text>
+              </View>
+              {displayTopGainers.map((item, index) => (
+                <GMPCard key={`gainer-${index}`} data={item} index={index} />
+              ))}
             </View>
-            {displayTopLosers.map((item, index) => (
-              <GMPCard key={`loser-${index}`} data={item} index={index} />
-            ))}
-          </View>
-        )}
 
-        {/* All GMP Data */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Calendar size={20} color="#60A5FA" />
-            <Text style={styles.sectionTitle}>All IPOs GMP</Text>
-          </View>
-          {displayGMPData.map((item, index) => (
-            <GMPCard key={`all-${index}`} data={item} index={index} />
-          ))}
-        </View>
-      </ScrollView>
+            {/* Only shown when something is actually trading below issue price */}
+            {displayTopLosers.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <TrendingDown size={20} color="#EF4444" />
+                  <Text style={styles.sectionTitle}>Top Losers</Text>
+                </View>
+                {displayTopLosers.map((item, index) => (
+                  <GMPCard key={`loser-${index}`} data={item} index={index} />
+                ))}
+              </View>
+            )}
+
+            <View style={[styles.sectionHeader, styles.listRow]}>
+              <Calendar size={20} color="#60A5FA" />
+              <Text style={styles.sectionTitle}>All IPOs GMP</Text>
+            </View>
+          </>
+        }
+      />
     )}
       <CustomTabBar />
     </SafeAreaView>
@@ -227,6 +253,10 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
   section: {
     marginHorizontal: 16,
     marginBottom: 24,
+  },
+  // The inset the cards used to get from `section`, now that they are rows.
+  listRow: {
+    marginHorizontal: 16,
   },
   sectionHeader: {
     

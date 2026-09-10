@@ -12,7 +12,20 @@
           "package_name": "com.iposahayak"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "754425793881-ik73rpdj06408uc3lbe6a0531lemt8vs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.iposahayak",
+            "certificate_hash": "0d4356c46b69f4ff31c8971873f2c95ada42c34f"
+          }
+        },
+        {
+          "client_id": "754425793881-icleqotdtiddh85unvka4k6meeev76mj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAqm7PdHrRKXZw1B6VIZC9-wJF4uWBnh3E"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "754425793881-icleqotdtiddh85unvka4k6meeev76mj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

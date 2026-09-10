@@ -5,5 +5,5 @@
   <!-- Must match runtimeVersion in app.config.js. EAS only delivers an update
        whose runtimeVersion equals the one embedded here; this said 1.0.0 while
        the config said 1.2.0, so no published update could ever match. -->
-  <string name="expo_runtime_version">1.2.0</string>
+  <string name="expo_runtime_version">1.3.0</string>
 </resources>

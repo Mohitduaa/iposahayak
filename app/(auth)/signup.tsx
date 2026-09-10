@@ -1,555 +1,445 @@
-import React, { useState } from 'react';
+// Create an account: Google in one tap, or email with a code sent to it.
+//
+// The email road has two steps on the one screen. The form posts to
+// /auth/signup, which emails a six-digit code; the card then swaps to the
+// code boxes, and /auth/verify-otp answers with a token so the person lands
+// in the app signed in, rather than being sent back to type it all again.
+
+import React, {useEffect, useRef, useState} from 'react'
 import {
-  View,
-  Text,
+  Linking,
+  Modal,
+  Platform,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  Alert,
-  ActivityIndicator,
   useColorScheme,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { Link, router } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff, User, TrendingUp } from 'lucide-react-native';
-import WebView from 'react-native-webview';
-import { Modal } from 'react-native';
+  View,
+} from 'react-native'
+import {SafeAreaView} from 'react-native-safe-area-context'
+import {Link, router} from 'expo-router'
+import {Check, Lock, Mail, MailCheck, User as UserIcon, X} from 'lucide-react-native'
+import {useUser} from '@/hooks/useUser'
+import {postJson} from '@/services/authApi'
+import {GoogleSignInError, signInWithGoogle} from '@/services/googleSignIn'
+import {track} from '@/services/analytics'
+import AuthScreen from '@/components/auth/AuthScreen'
+import AuthInput from '@/components/auth/AuthInput'
+import PrimaryButton from '@/components/auth/PrimaryButton'
+import GoogleButton from '@/components/auth/GoogleButton'
+import OrDivider from '@/components/auth/OrDivider'
+import OtpInput from '@/components/auth/OtpInput'
+import FormError from '@/components/auth/FormError'
+import {authPalette} from '@/components/auth/theme'
 
-export default function SignupScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const RESEND_SECONDS = 30
+const TERMS_URL = 'https://www.iposahayak.com/terms-conditions'
+const PRIVACY_URL = 'https://www.iposahayak.com/privacy-policy'
 
-  // Signup form states
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [agreeToTerms, setAgreeToTerms] = useState(false);
-const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
-const [showWebView, setShowWebView] = useState(false);
-
-  // Password visibility
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // OTP input and flow control
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-
-  // Loading states
-  const [loading, setLoading] = useState(false);
-  const [otpLoading, setOtpLoading] = useState(false);
-
-  // Validate signup inputs
-  const validateSignupInputs = () => {
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return false;
-    }
-    if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return false;
-    }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return false;
-    }
-    if (!agreeToTerms) {
-      Alert.alert('Error', 'Please agree to the Terms of Service and Privacy Policy');
-      return false;
-    }
-    return true;
-  };
-
-  // Call signup API to send OTP
-  const handleSignup = async () => {
-    if (!validateSignupInputs()) return;
-
-    setLoading(true);
-
-    try {
-      const res = await fetch('https://api.iposahayak.com/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-      const data = await res.json();
-
-      setLoading(false);
-
-      if (res.ok) {
-        Alert.alert('Success', data.message);
-        setOtpSent(true);  // Show OTP input
-      } else {
-        Alert.alert('Error', data.message || 'Signup failed');
-      }
-    } catch (error) {
-      setLoading(false);
-      Alert.alert('Error', 'Network error');
-    }
-  };
-
-  // Call verify OTP API
-  const handleVerifyOtp = async () => {
-    if (otp.length !== 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit OTP');
-      return;
-    }
-
-    setOtpLoading(true);
-
-    try {
-      const res = await fetch('https://api.iposahayak.com/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp }),
-      });
-      const data = await res.json();
-
-      setOtpLoading(false);
-
-      if (res.ok) {
-        Alert.alert('Success', data.message, [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Save token and navigate to home/login screen
-              // For example:
-              // AsyncStorage.setItem('token', data.token);
-              router.replace('/(auth)/login');
-            },
-          },
-        ]);
-      } else {
-        Alert.alert('Error', data.message || 'OTP verification failed');
-      }
-    } catch (error) {
-      setOtpLoading(false);
-      Alert.alert('Error', 'Network error');
-    }
-  };
-
-  const styles = getStyles(isDark);
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <TrendingUp size={40} color="#1E40AF" />
-            </View>
-            <Text style={styles.title}>
-              {otpSent ? 'Verify OTP' : 'Create Account'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {otpSent
-                ? `An OTP has been sent to ${email}. Please enter it below.`
-                : 'Join thousands of IPO investors'}
-            </Text>
-          </View>
-
-          {!otpSent ? (
-            <>
-              {/* Signup Form */}
-              {/* Name Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Full Name</Text>
-                <View style={styles.inputWrapper}>
-                  <User size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your full name"
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
-                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                  />
-                </View>
-              </View>
-
-              {/* Email Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email Address</Text>
-                <View style={styles.inputWrapper}>
-                  <Mail size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter your email"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                  />
-                </View>
-              </View>
-
-              {/* Password Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Password</Text>
-                <View style={styles.inputWrapper}>
-                  <Lock size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Create a password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeButton}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                    ) : (
-                      <Eye size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Confirm Password Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Confirm Password</Text>
-                <View style={styles.inputWrapper}>
-                  <Lock size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showConfirmPassword}
-                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={styles.eyeButton}
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                    ) : (
-                      <Eye size={20} color={isDark ? '#94A3B8' : '#64748B'} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Terms Agreement */}
-              <TouchableOpacity
-                style={styles.termsContainer}
-                onPress={() => setAgreeToTerms(!agreeToTerms)}
-              >
-                <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
-                  {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <Text style={styles.termsText}>
-  I agree to the{' '}
-  <Text
-    style={styles.termsLink}
-    onPress={() => {
-      setWebViewUrl('https://www.iposahayak.com/terms-conditions');
-      setShowWebView(true);
-    }}
-  >
-    Terms of Service
-  </Text>{' '}
-  and{' '}
-  <Text
-    style={styles.termsLink}
-    onPress={() => {
-      setWebViewUrl('https://www.iposahayak.com/privacy-policy');
-      setShowWebView(true);
-    }}
-  >
-    Privacy Policy
-  </Text>
-</Text>
-
-              </TouchableOpacity>
-<Modal
-  visible={showWebView}
-  animationType="slide"
-  onRequestClose={() => setShowWebView(false)}
->
-  <View style={{ flex: 1, backgroundColor: '#fff' }}>
-    <TouchableOpacity
-      style={{
-        position: 'absolute',
-        top: 40,
-        right: 20,
-        zIndex: 10,
-        backgroundColor: '#1E40AF',
-        padding: 10,
-        borderRadius: 25,
-      }}
-      onPress={() => setShowWebView(false)}
-    >
-      <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
-    </TouchableOpacity>
-
-    <WebView
-      source={{ uri: webViewUrl || 'https://www.iposahayak.com' }}
-      style={{ flex: 1 }}
-    />
-  </View>
-</Modal>
-
-
-              {/* Signup Button */}
-              <TouchableOpacity
-                style={[styles.signupButton, loading && styles.signupButtonDisabled]}
-                onPress={handleSignup}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <Text style={styles.signupButtonText}>Create Account</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              {/* OTP Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Enter OTP</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={[styles.input, { letterSpacing: 10, textAlign: 'center' }]}
-                    placeholder="6-digit OTP"
-                    value={otp}
-                    onChangeText={setOtp}
-                    keyboardType="numeric"
-                    maxLength={6}
-                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                  />
-                </View>
-              </View>
-
-              {/* Verify OTP Button */}
-              <TouchableOpacity
-                style={[styles.signupButton, otpLoading && styles.signupButtonDisabled]}
-                onPress={handleVerifyOtp}
-                disabled={otpLoading}
-              >
-                {otpLoading ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <Text style={styles.signupButtonText}>Verify OTP</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
-
-          {!otpSent && (
-            <>
-              {/* Divider */}
-              {/* <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View> */}
-
-              {/* Social Signup */}
-              {/* <TouchableOpacity style={styles.socialButton}>
-                <Text style={styles.socialButtonText}>Continue with Google</Text>
-              </TouchableOpacity> */}
-
-              {/* Login Link */}
-              <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>Already have an account? </Text>
-                <Link href="/(auth)/login" asChild>
-                  <TouchableOpacity>
-                    <Text style={styles.loginLink}>Sign In</Text>
-                  </TouchableOpacity>
-                </Link>
-              </View>
-            </>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+interface Errors {
+  name?: string
+  email?: string
+  password?: string
+  confirm?: string
+  terms?: string
+  form?: string
 }
 
-const getStyles = (isDark: boolean) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-    },
-    keyboardView: {
-      flex: 1,
-    },
-    scrollContent: {
-      flexGrow: 1,
-      justifyContent: 'center',
-      paddingHorizontal: 24,
-      paddingVertical: 40,
-    },
-    header: {
-      alignItems: 'center',
-      marginBottom: 40,
-    },
-    logoContainer: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: isDark ? '#1E293B' : '#EFF6FF',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 24,
-    },
-    title: {
-      fontSize: 28,
-      fontWeight: '700',
-      color: isDark ? '#F1F5F9' : '#1E293B',
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: isDark ? '#94A3B8' : '#64748B',
-      textAlign: 'center',
-    },
-    form: {
-      gap: 20,
-    },
-    inputContainer: {
-      gap: 8,
-    },
-    inputLabel: {
-      paddingTop:10,
-      fontSize: 16,
-      fontWeight: '600',
-      color: isDark ? '#F1F5F9' : '#1E293B',
-    },
-    inputWrapper: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderWidth: 1,
-      borderColor: isDark ? '#334155' : '#E2E8F0',
-      borderRadius: 12,
-      paddingHorizontal: 12,
-      height: 48,
-      gap: 8,
-    },
-    input: {
-      flex: 1,
-      fontSize: 16,
-      color: isDark ? '#F1F5F9' : '#1E293B',
-    },
-    eyeButton: {
-      padding: 4,
-    },
-    termsContainer: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 12,
-      marginTop: 8,
-    },
-    checkbox: {
-      width: 20,
-      height: 20,
-      borderWidth: 2,
-      borderColor: isDark ? '#334155' : '#E2E8F0',
-      borderRadius: 4,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginTop: 2,
-    },
-    checkboxChecked: {
-      backgroundColor: '#1E40AF',
-      borderColor: '#1E40AF',
-    },
-    checkmark: {
-      color: '#FFFFFF',
-      fontSize: 12,
-      fontWeight: 'bold',
-    },
-    termsText: {
-      flex: 1,
-      fontSize: 14,
-      color: isDark ? '#94A3B8' : '#64748B',
-      lineHeight: 20,
-    },
-    termsLink: {
-      color: '#1E40AF',
-      fontWeight: '500',
-    },
-    signupButton: {
-      backgroundColor: '#1E40AF',
-      paddingVertical: 16,
-      borderRadius: 12,
-      alignItems: 'center',
-      marginTop: 8,
-    },
-    signupButtonDisabled: {
-      opacity: 0.6,
-    },
-    signupButtonText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: '#FFFFFF',
-    },
-    divider: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginVertical: 24,
-      gap: 16,
-    },
-    dividerLine: {
-      flex: 1,
-      height: 1,
-      backgroundColor: isDark ? '#334155' : '#E2E8F0',
-    },
-    dividerText: {
-      fontSize: 14,
-      color: isDark ? '#94A3B8' : '#64748B',
-    },
-    socialButton: {
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderWidth: 1,
-      borderColor: isDark ? '#334155' : '#E2E8F0',
-      paddingVertical: 16,
-      borderRadius: 12,
-      alignItems: 'center',
-    },
-    socialButtonText: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: isDark ? '#F1F5F9' : '#1E293B',
-    },
-    loginContainer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginTop: 24,
-    },
-    loginText: {
-      fontSize: 16,
-      color: isDark ? '#94A3B8' : '#64748B',
-    },
-    loginLink: {
-      fontSize: 16,
-      color: '#1E40AF',
-      fontWeight: '600',
-    },
-  });
+export default function SignupScreen() {
+  const c = authPalette(useColorScheme() === 'dark')
+  const {setUserFromLogin} = useUser()
+
+  const [step, setStep] = useState<'form' | 'code'>('form')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [agreed, setAgreed] = useState(false)
+  const [code, setCode] = useState('')
+  const [errors, setErrors] = useState<Errors>({})
+  const [busy, setBusy] = useState<'email' | 'google' | 'code' | 'resend' | null>(null)
+  const [resendIn, setResendIn] = useState(0)
+  const [legalUrl, setLegalUrl] = useState<string | null>(null)
+
+  const emailRef = useRef<TextInput>(null)
+  const passwordRef = useRef<TextInput>(null)
+  const confirmRef = useRef<TextInput>(null)
+
+  // The resend countdown
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendIn])
+
+  const clear = (key: keyof Errors) => {
+    if (errors[key] || errors.form) setErrors((e) => ({...e, [key]: undefined, form: undefined}))
+  }
+
+  const finish = async (data: {token: string; user: any}, method: 'email' | 'google') => {
+    await setUserFromLogin(data)
+    track.signup(method)
+    router.replace('/(tabs)')
+  }
+
+  // ---- step 1: the form -----------------------------------------------------
+
+  const validate = () => {
+    const next: Errors = {}
+    if (!name.trim()) next.name = 'Enter your name'
+    if (!email.trim()) next.email = 'Enter your email address'
+    else if (!EMAIL.test(email.trim())) next.email = 'That does not look like an email address'
+    if (!password) next.password = 'Choose a password'
+    else if (password.length < 6) next.password = 'Use at least 6 characters'
+    if (confirm !== password) next.confirm = 'Passwords do not match'
+    if (!agreed) next.terms = 'Please accept the Terms and Privacy Policy to continue'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  const sendCode = async (kind: 'email' | 'resend') => {
+    setBusy(kind)
+    const reply = await postJson('/auth/signup', {name: name.trim(), email: email.trim().toLowerCase(), password})
+    setBusy(null)
+    if (!reply.ok) {
+      const taken = reply.status === 400 && /exists/i.test(reply.data?.message || '')
+      setErrors(
+        taken
+          ? {email: 'An account with this email already exists', form: undefined}
+          : {form: reply.data?.message || 'Could not send the code. Please try again.'}
+      )
+      if (taken) setStep('form')
+      return false
+    }
+    setResendIn(RESEND_SECONDS)
+    return true
+  }
+
+  const handleSignup = async () => {
+    if (busy || !validate()) return
+    if (await sendCode('email')) {
+      setCode('')
+      setErrors({})
+      setStep('code')
+    }
+  }
+
+  const handleGoogle = async () => {
+    if (busy) return
+    setErrors({})
+    setBusy('google')
+    try {
+      const google = await signInWithGoogle()
+      if (google.cancelled) return
+      const reply = await postJson('/auth/google', {idToken: google.idToken})
+      if (!reply.ok || !reply.data?.token) {
+        setErrors({form: reply.data?.message || 'Google sign-in failed. Please try again.'})
+        return
+      }
+      await finish(reply.data, 'google')
+    } catch (error: any) {
+      setErrors({form: error instanceof GoogleSignInError ? error.message : 'Google sign-in did not work. Please try again.'})
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // ---- step 2: the code -----------------------------------------------------
+
+  const handleVerify = async () => {
+    if (busy || code.length !== 6) return
+    setBusy('code')
+    const reply = await postJson('/auth/verify-otp', {email: email.trim().toLowerCase(), otp: code})
+    if (!reply.ok) {
+      setBusy(null)
+      const expired = /expired/i.test(reply.data?.message || '')
+      setErrors({form: expired ? 'That code has expired. Send a new one.' : reply.data?.message || 'That code is not right'})
+      return
+    }
+    if (reply.data?.token && reply.data?.user) {
+      await finish(reply.data, 'email')
+      return
+    }
+    // An older backend answers without the user; fall back to signing in
+    setBusy(null)
+    router.replace('/(auth)/login')
+  }
+
+  const openLegal = (url: string) => {
+    if (Platform.OS === 'web') Linking.openURL(url)
+    else setLegalUrl(url)
+  }
+
+  // ---- render ---------------------------------------------------------------
+
+  // Keyed by step so switching form ↔ code replays the entrance animation
+  if (step === 'code') {
+    return (
+      <AuthScreen
+        key='code'
+        title='Check your email'
+        subtitle={`We sent a 6-digit code to ${email.trim()}.`}
+        footer={
+          <TouchableOpacity onPress={() => setStep('form')} hitSlop={8} disabled={!!busy}>
+            <Text style={[styles.footerLink, {color: c.link}]}>Wrong email? Go back</Text>
+          </TouchableOpacity>
+        }
+      >
+        <View style={[styles.codeIcon, {backgroundColor: c.tint}]}>
+          <MailCheck size={26} color={c.focus} />
+        </View>
+
+        <OtpInput
+          value={code}
+          onChange={(v) => {
+            setCode(v)
+            if (errors.form) setErrors({})
+          }}
+          error={!!errors.form}
+          autoFocus
+        />
+
+        <FormError message={errors.form} style={{marginTop: 12, marginBottom: 0}} />
+
+        <View style={{height: 14}} />
+        <PrimaryButton title='Verify & Continue' onPress={handleVerify} loading={busy === 'code'} disabled={code.length !== 6 || busy === 'resend'} />
+
+        <View style={styles.resendRow}>
+          <Text style={[styles.footerText, {color: c.muted}]}>Didn't get it? </Text>
+          {resendIn > 0 ? (
+            <Text style={[styles.footerText, {color: c.faint}]}>Resend in {resendIn}s</Text>
+          ) : (
+            <TouchableOpacity onPress={() => sendCode('resend')} disabled={!!busy} hitSlop={8}>
+              <Text style={[styles.footerLink, {color: c.link}]}>{busy === 'resend' ? 'Sending…' : 'Resend code'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </AuthScreen>
+    )
+  }
+
+  return (
+    <>
+      <AuthScreen
+        key='form'
+        compact
+        title='Create your account'
+        subtitle='Free forever. GMP, allotment and alerts in one place.'
+        footer={
+          <View style={styles.footerRow}>
+            <Text style={[styles.footerText, {color: c.muted}]}>Already have an account? </Text>
+            <Link href='/(auth)/login' asChild>
+              <TouchableOpacity hitSlop={8}>
+                <Text style={[styles.footerLink, {color: c.link}]}>Sign in</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
+        }
+      >
+        <GoogleButton onPress={handleGoogle} loading={busy === 'google'} disabled={busy === 'email'} />
+        <OrDivider label='or sign up with email' />
+
+        <AuthInput
+          label='Full name'
+          icon={<UserIcon size={19} color={c.muted} />}
+          value={name}
+          onChangeText={(t) => {
+            setName(t)
+            clear('name')
+          }}
+          error={errors.name}
+          placeholder='Your name'
+          autoCapitalize='words'
+          autoComplete='name'
+          textContentType='name'
+          returnKeyType='next'
+          onSubmitEditing={() => emailRef.current?.focus()}
+          editable={!busy}
+        />
+        <AuthInput
+          ref={emailRef}
+          label='Email'
+          icon={<Mail size={19} color={c.muted} />}
+          value={email}
+          onChangeText={(t) => {
+            setEmail(t)
+            clear('email')
+          }}
+          error={errors.email}
+          placeholder='you@example.com'
+          keyboardType='email-address'
+          autoCapitalize='none'
+          autoCorrect={false}
+          autoComplete='email'
+          textContentType='emailAddress'
+          returnKeyType='next'
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          editable={!busy}
+        />
+        <AuthInput
+          ref={passwordRef}
+          label='Password'
+          icon={<Lock size={19} color={c.muted} />}
+          value={password}
+          onChangeText={(t) => {
+            setPassword(t)
+            clear('password')
+          }}
+          error={errors.password}
+          placeholder='At least 6 characters'
+          secure
+          autoCapitalize='none'
+          autoComplete='new-password'
+          textContentType='newPassword'
+          returnKeyType='next'
+          onSubmitEditing={() => confirmRef.current?.focus()}
+          editable={!busy}
+        />
+        <AuthInput
+          ref={confirmRef}
+          label='Confirm password'
+          icon={<Lock size={19} color={c.muted} />}
+          value={confirm}
+          onChangeText={(t) => {
+            setConfirm(t)
+            clear('confirm')
+          }}
+          error={errors.confirm}
+          placeholder='Type it again'
+          secure
+          autoCapitalize='none'
+          autoComplete='new-password'
+          textContentType='newPassword'
+          returnKeyType='go'
+          onSubmitEditing={handleSignup}
+          editable={!busy}
+        />
+
+        <TouchableOpacity
+          style={styles.termsRow}
+          onPress={() => {
+            setAgreed((a) => !a)
+            clear('terms')
+          }}
+          activeOpacity={0.8}
+          disabled={!!busy}
+        >
+          <View
+            style={[
+              styles.checkbox,
+              {borderColor: errors.terms ? c.error : agreed ? c.focus : c.inputBorder, backgroundColor: agreed ? c.focus : 'transparent'},
+            ]}
+          >
+            {agreed && <Check size={14} color='#FFFFFF' strokeWidth={3} />}
+          </View>
+          <Text style={[styles.termsText, {color: c.muted}]}>
+            I agree to the{' '}
+            <Text style={[styles.termsLink, {color: c.link}]} onPress={() => openLegal(TERMS_URL)}>
+              Terms of Service
+            </Text>{' '}
+            and{' '}
+            <Text style={[styles.termsLink, {color: c.link}]} onPress={() => openLegal(PRIVACY_URL)}>
+              Privacy Policy
+            </Text>
+          </Text>
+        </TouchableOpacity>
+        {!!errors.terms && <Text style={[styles.termsError, {color: c.error}]}>{errors.terms}</Text>}
+
+        <FormError message={errors.form} style={{marginTop: 8}} />
+
+        <PrimaryButton title='Create Account' onPress={handleSignup} loading={busy === 'email'} disabled={busy === 'google'} />
+      </AuthScreen>
+
+      <LegalModal url={legalUrl} onClose={() => setLegalUrl(null)} />
+    </>
+  )
+}
+
+/** Terms and Privacy open in a sheet instead of throwing the person out to a browser. */
+function LegalModal({url, onClose}: {url: string | null; onClose: () => void}) {
+  const c = authPalette(useColorScheme() === 'dark')
+  // Required lazily: the web build has no WebView, and it is never shown there
+  const WebView = url && Platform.OS !== 'web' ? require('react-native-webview').default : null
+  return (
+    <Modal visible={!!url} animationType='slide' onRequestClose={onClose}>
+      <SafeAreaView style={[styles.legal, {backgroundColor: c.surface}]} edges={['top', 'bottom']}>
+        <View style={[styles.legalBar, {borderBottomColor: c.cardBorder}]}>
+          <Text style={[styles.legalTitle, {color: c.text}]}>{url === PRIVACY_URL ? 'Privacy Policy' : 'Terms of Service'}</Text>
+          <TouchableOpacity onPress={onClose} hitSlop={10}>
+            <X size={22} color={c.muted} />
+          </TouchableOpacity>
+        </View>
+        {WebView && url ? <WebView source={{uri: url}} style={{flex: 1}} /> : null}
+      </SafeAreaView>
+    </Modal>
+  )
+}
+
+const styles = StyleSheet.create({
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  termsLink: {fontWeight: '700'},
+  termsError: {
+    fontSize: 12.5,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  codeIcon: {
+    alignSelf: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 18,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerText: {fontSize: 14},
+  footerLink: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  legal: {flex: 1},
+  legalBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  legalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+})

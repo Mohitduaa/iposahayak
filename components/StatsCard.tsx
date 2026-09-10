@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   useColorScheme,
+  TouchableOpacity,
 } from 'react-native';
 
 interface StatsCardProps {
@@ -11,22 +12,40 @@ interface StatsCardProps {
   value: string;
   icon: React.ReactNode;
   color: string;
+  onPress?: () => void;
 }
 
-export function StatsCard({ title, value, icon, color }: StatsCardProps) {
+export function StatsCard({ title, value, icon, color, onPress }: StatsCardProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   
   const styles = getStyles(isDark);
 
+  const Container = onPress ? TouchableOpacity : View;
+
   return (
-    <View style={styles.container}>
+    <Container style={styles.container} onPress={onPress}>
       <View style={styles.iconContainer}>
         {icon}
       </View>
-      <Text style={styles.value}>{value}</Text>
-      <Text style={styles.title}>{title}</Text>
-    </View>
+      {/*
+        Three of these sit side by side, so each gets a third of the screen and
+        no more. At the system's largest font setting "Upcoming" wrapped to
+        "Upcomin / g" and the row grew a second line.
+
+        The cap is the whole fix: at the normal setting the text renders at
+        exactly the size in the styles below, and it is only stopped from
+        growing far enough to break the row. Shrink-to-fit was tried here and
+        removed — it re-sized the labels at the normal setting too, which
+        changed how the cards looked when nothing was wrong.
+      */}
+      <Text style={styles.value} numberOfLines={1} maxFontSizeMultiplier={1.3}>
+        {value || '0'}
+      </Text>
+      <Text style={styles.title} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+        {title || 'N/A'}
+      </Text>
+    </Container>
   );
 }
 

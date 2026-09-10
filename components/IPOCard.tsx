@@ -16,8 +16,8 @@ import ViewShot from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { WebView } from 'react-native-webview';
+import { router } from 'expo-router';
 import { IPO } from '@/types';
-import { IPODetailsModal } from '@/components/IPODetailsModal';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -38,7 +38,6 @@ interface IPOCardProps {
 export function IPOCard({ ipo, index = 0 }: IPOCardProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const [showDetails, setShowDetails] = useState(false);
   const [countdown, setCountdown] = useState<string | null>(ipo.timeLeft || null);
   const [showWebView, setShowWebView] = useState(false);
   const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
@@ -177,7 +176,12 @@ export function IPOCard({ ipo, index = 0 }: IPOCardProps) {
         >
         <TouchableOpacity
           style={styles.container}
-          onPress={() => setShowDetails(true)}
+          onPress={() =>
+            router.push({
+              pathname: '/ipo-detail/[id]',
+              params: { id: ipo.id, data: JSON.stringify(ipo) },
+            })
+          }
           onPressIn={() => {
             pressed.value = withSpring(0.98, { damping: 18, stiffness: 260 });
           }}
@@ -354,8 +358,6 @@ export function IPOCard({ ipo, index = 0 }: IPOCardProps) {
         </Animated.View>
       </ViewShot>
 
-      <IPODetailsModal ipo={ipo} visible={showDetails} onClose={() => setShowDetails(false)} />
-
       <Modal
         visible={showWebView}
         animationType="slide"
@@ -524,10 +526,17 @@ disabledButton: {
       marginTop: 8,
       alignItems: 'center',
     },
+    // The GMP figure and the subscription count sat on one line with no way to
+    // give: at a large system font "GMP: ₹223 (₹850 (34.49%))" pushed the
+    // subscription count into the screen edge and the icon collided with the
+    // text. Wrapping lets the second pair drop to its own line instead.
     footer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      flexWrap: 'wrap',
+      rowGap: 8,
+      columnGap: 12,
       paddingTop: 12,
       borderTopWidth: 1,
       borderTopColor: isDark ? '#334155' : '#E2E8F0',
@@ -536,6 +545,7 @@ disabledButton: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+      flexShrink: 1,
     },
     gmpLabel: {
       fontSize: 14,
@@ -544,6 +554,7 @@ disabledButton: {
     gmpValue: {
       fontSize: 14,
       fontWeight: '600',
+      flexShrink: 1,
     },
     subscriptionSection: {
       flexDirection: 'row',

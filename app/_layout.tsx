@@ -12,11 +12,25 @@ import { UpdatePrompt } from '@/components/UpdatePrompt';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-// SplashScreen.preventAutoHideAsync();
+// Hold the native splash until index.tsx has decided where to send the user.
+// Commented out, the splash hid the moment the activity drew, so the app showed
+// a bare spinner on a different background for the length of the auth check —
+// two loading screens back to back instead of one.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Already hidden, or the module is unavailable; nothing to hold.
+});
 
 export default function RootLayout() {
   useFrameworkReady();
   useScreenTracking();
+
+  // Hiding the splash belongs here, not in app/index.tsx. index only runs when
+  // the app is opened at "/", so a deep link — or anything else that lands on
+  // another route first — never reached the hideAsync call and the app sat on
+  // the splash screen forever. The root layout mounts on every entry path.
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
 
   // 🔹 OneSignal init
   //

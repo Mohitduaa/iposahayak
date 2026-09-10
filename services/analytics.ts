@@ -78,4 +78,8 @@ export const track = {
 
   /** The Play Store rating flow. */
   rateApp: (path: 'in_app' | 'store') => logEvent('rate_app', {path}),
+
+  /** GA4's own names for these, so its sign-in reports fill themselves in. */
+  login: (method: 'email' | 'google') => logEvent('login', {method}),
+  signup: (method: 'email' | 'google') => logEvent('sign_up', {method}),
 }

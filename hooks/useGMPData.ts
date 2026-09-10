@@ -91,10 +91,17 @@ function upperPrice(item: any): number {
   return parseRupee(item.price);
 }
 
-/** Short enough for a chart axis, but still recognisable. */
+/**
+ * Short enough for a chart axis, but still recognisable.
+ *
+ * Six labels share about 330dp on a phone, so each has roughly 55dp. Eight
+ * characters did not fit in that and the names ran into each other along the
+ * axis — "KanohaRentomoj…Glass". Six keeps them apart and still tells you
+ * which issue you are looking at.
+ */
 function shortLabel(name: string): string {
   const first = String(name || '').split(' ')[0];
-  return first.length > 8 ? `${first.slice(0, 8)}…` : first;
+  return first.length > 6 ? `${first.slice(0, 6)}…` : first;
 }
 
 function buildRows(items: any[]): GMPRow[] {
