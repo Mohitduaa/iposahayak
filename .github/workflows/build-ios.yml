@@ -20,6 +20,10 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.1.app 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.0.app 2>/dev/null || sudo xcode-select -s /Applications/Xcode_16.app 2>/dev/null || true
           xcodebuild -version
 
+      - name: Ensure iOS Platform is Installed
+        run: |
+          xcodebuild -downloadPlatform iOS || true
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -72,6 +76,7 @@ jobs:
           xcodebuild -workspace IpoShayak.xcworkspace \
             -scheme IpoShayak \
             -configuration Release \
+            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/IpoShayak.xcarchive" \
             CODE_SIGNING_ALLOWED=NO \
