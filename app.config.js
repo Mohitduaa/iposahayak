@@ -11,6 +11,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.iposahayak",
+      googleServicesFile: "./GoogleService-Info.plist",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         UIBackgroundModes: ["remote-notification"]
