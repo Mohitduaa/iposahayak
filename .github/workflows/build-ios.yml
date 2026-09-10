@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16.2 (with installed iOS platform)
+      - name: Select Xcode 16.2
         run: |
           sudo xcode-select -switch /Applications/Xcode_16.2.app/Contents/Developer || sudo xcode-select -switch /Applications/Xcode_16.app/Contents/Developer || true
           xcodebuild -version
@@ -40,23 +40,23 @@ jobs:
           cd ios
           pod install --repo-update
 
-      - name: Build Xcode Archive (Unsigned)
+      - name: Build Xcode App (Unsigned)
         run: |
           cd ios
           xcodebuild -workspace IpoShayak.xcworkspace \
             -scheme IpoShayak \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/IpoShayak.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            archive
+            build
 
       - name: Package App into IPA
         run: |
           mkdir -p "$RUNNER_TEMP/Payload"
-          cp -R "$RUNNER_TEMP/IpoShayak.xcarchive/Products/Applications/IpoShayak.app" "$RUNNER_TEMP/Payload/"
+          cp -R "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/IpoShayak.app" "$RUNNER_TEMP/Payload/"
           cd "$RUNNER_TEMP"
           zip -r "$GITHUB_WORKSPACE/IpoShayak.ipa" Payload
 
