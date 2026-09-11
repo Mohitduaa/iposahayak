@@ -15,10 +15,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16.2
+      - name: Setup Latest Stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show Xcode & SDK Info
         run: |
-          sudo xcode-select -switch /Applications/Xcode_16.2.app
           xcodebuild -version
+          xcrun simctl list runtimes || true
+          xcodebuild -showsdks
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -31,20 +37,23 @@ jobs:
       - name: Generate iOS native project (Expo Prebuild)
         run: npx expo prebuild --platform ios --clean
 
-      - name: Install CocoaPods
+      - name: Configure iOS Deployment Target & Disable Code Signing
         run: |
           cd ios
-          pod install --repo-update
-
-      - name: Disable Code Signing in Xcode project
-        run: |
-          cd ios
-          # Disable code signing for all targets in the project
+          # Ensure iOS deployment target is 15.1 across all project targets
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.1;/g' IpoShayak.xcodeproj/project.pbxproj
+          
+          # Disable code signing for all targets
           sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' IpoShayak.xcodeproj/project.pbxproj
           sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "";/g' IpoShayak.xcodeproj/project.pbxproj
           sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' IpoShayak.xcodeproj/project.pbxproj
           sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' IpoShayak.xcodeproj/project.pbxproj
-          echo "Code signing disabled in project file"
+          echo "Deployment target set to 15.1 and code signing disabled."
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install --repo-update
 
       - name: Build Xcode Archive (Unsigned)
         run: |
@@ -65,7 +74,8 @@ jobs:
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
             SKIP_INSTALL=NO \
             BUILD_LIBRARY_FOR_DISTRIBUTION=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            IPHONEOS_DEPLOYMENT_TARGET=15.1
 
       - name: Package Archive into IPA
         run: |

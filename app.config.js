@@ -40,7 +40,7 @@ export default {
       "@react-native-firebase/app",
       // Firebase's own SDKs are static frameworks; without this the iOS build
       // fails and the Android one links the wrong way round
-      ["expo-build-properties", { ios: { useFrameworks: "static" } }],
+      ["expo-build-properties", { ios: { useFrameworks: "static", deploymentTarget: "15.1" } }],
       // SDK 52 moved splash configuration onto this plugin; the old top-level
       // `splash` key below it was being ignored, which is why changing it never
       // changed anything. imageWidth is the piece the legacy key had no way to
