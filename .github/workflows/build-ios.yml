@@ -20,14 +20,10 @@ jobs:
           sudo xcode-select -switch /Applications/Xcode_16.2.app
           xcodebuild -version
 
-      - name: Show available SDKs
-        run: xcodebuild -showsdks
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 24
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -40,33 +36,45 @@ jobs:
           cd ios
           pod install --repo-update
 
-      - name: Build Xcode App (Unsigned)
+      - name: Disable Code Signing in Xcode project
         run: |
           cd ios
-          # Use 'iphoneos' WITHOUT version number to skip platform validation
-          # -destination removed intentionally (causes "platform not installed" error)
-          xcodebuild \
+          # Disable code signing for all targets in the project
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' IpoShayak.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "";/g' IpoShayak.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' IpoShayak.xcodeproj/project.pbxproj
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' IpoShayak.xcodeproj/project.pbxproj
+          echo "Code signing disabled in project file"
+
+      - name: Build Xcode Archive (Unsigned)
+        run: |
+          cd ios
+          xcodebuild archive \
             -workspace IpoShayak.xcworkspace \
             -scheme IpoShayak \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -archivePath "$RUNNER_TEMP/IpoShayak.xcarchive" \
             ONLY_ACTIVE_ARCH=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             EXPANDED_CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            COMPILER_INDEX_STORE_ENABLE=NO \
-            build
+            SKIP_INSTALL=NO \
+            BUILD_LIBRARY_FOR_DISTRIBUTION=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
-      - name: Package App into IPA
+      - name: Package Archive into IPA
         run: |
-          APP_PATH=$(find "$RUNNER_TEMP/DerivedData" -name "IpoShayak.app" -type d | head -n 1)
+          # Find the .app inside the archive
+          APP_PATH=$(find "$RUNNER_TEMP/IpoShayak.xcarchive" -name "IpoShayak.app" -type d | head -n 1)
           echo "Found compiled app at: $APP_PATH"
           if [ -z "$APP_PATH" ]; then
-            echo "ERROR: IpoShayak.app not found!"
+            echo "ERROR: IpoShayak.app not found in archive!"
+            ls -la "$RUNNER_TEMP/"
             exit 1
           fi
           mkdir -p "$RUNNER_TEMP/Payload"
@@ -74,6 +82,7 @@ jobs:
           cd "$RUNNER_TEMP"
           zip -qr "$GITHUB_WORKSPACE/IpoShayak.ipa" Payload
           ls -lh "$GITHUB_WORKSPACE/IpoShayak.ipa"
+          echo "IPA created successfully!"
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
