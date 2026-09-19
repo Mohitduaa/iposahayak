@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,17 @@ export function AddPANModal({ visible, onClose, onAddPAN, editingPAN }: AddPANMo
   const isDark = colorScheme === 'dark';
   const [pan, setPAN] = useState(editingPAN?.pan || '');
   const [name, setName] = useState(editingPAN?.name || '');
+
+  // The modal stays mounted and is only toggled via `visible`, so its state
+  // was seeded once on first mount and never again — editing PAN B after
+  // having edited PAN A first could still show A's saved name. Re-sync
+  // whenever the sheet opens for a (possibly different) target.
+  useEffect(() => {
+    if (visible) {
+      setPAN(editingPAN?.pan || '');
+      setName(editingPAN?.name || '');
+    }
+  }, [visible, editingPAN]);
 
   const handleSave = () => {
     if (pan.length !== 10) {

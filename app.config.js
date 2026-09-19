@@ -1,6 +1,6 @@
 export default {
   expo: {
-    name: "IpoShayak",
+    name: "IPO Sahayak",
     slug: "IpoShayak",
     version: "1.2.6",
     orientation: "portrait",
@@ -33,7 +33,13 @@ export default {
       favicon: "./assets/images/favicon.png"
     },
     plugins: [
-      ["onesignal-expo-plugin", { mode: "development" }],
+      // Sets the iOS "aps-environment" entitlement. EAS-built IPAs — even the
+      // "development" build profile — are ad-hoc/distribution signed, not a
+      // raw Xcode debug build, so they all need the production APNs
+      // environment. Left as "development" here, every IPA silently failed
+      // to receive OneSignal pushes on iOS: the entitlement said development,
+      // the signing said otherwise, and iOS just dropped the registration.
+      ["onesignal-expo-plugin", { mode: "production" }],
       "expo-router",
       "expo-font",
       "expo-web-browser",

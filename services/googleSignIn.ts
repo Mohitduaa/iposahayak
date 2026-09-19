@@ -43,7 +43,12 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
   if (!configured) {
     const webClientId = Constants.expoConfig?.extra?.googleWebClientId
     if (!webClientId) throw new GoogleSignInError('Google sign-in is not set up yet')
-    GoogleSignin.configure({webClientId, offlineAccess: false})
+    // iOS needs its own OAuth client, separate from the web one the backend
+    // verifies tokens against — without it the native SDK has no client to
+    // sign in against and crashes the app rather than failing into JS, which
+    // is why this is guarded and not required the way webClientId is.
+    const iosClientId = Constants.expoConfig?.extra?.googleIosClientId
+    GoogleSignin.configure({webClientId, iosClientId, offlineAccess: false})
     configured = true
   }
 

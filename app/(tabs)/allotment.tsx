@@ -68,6 +68,19 @@ export default function AllotmentScreen() {
   };
 
   const handleAddPAN = (pan: string, name: string) => {
+    // Editing reuses this modal, and the PAN field is disabled while editing
+    // (only the name can change) — so this must update the existing entry,
+    // not go through addPAN, which refuses a PAN already in the list. That
+    // refusal is exactly right for a genuine add; it was wrongly firing on
+    // every edit too, since the PAN being "edited" is by definition already
+    // saved.
+    if (editingPAN) {
+      updatePANName(editingPAN.pan, name);
+      setShowAddPANModal(false);
+      setEditingPAN(undefined);
+      return true;
+    }
+
     const success = addPAN(pan, name);
     if (success) {
       setShowAddPANModal(false);

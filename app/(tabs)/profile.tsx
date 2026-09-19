@@ -22,6 +22,7 @@ import * as Notifications from 'expo-notifications';
 import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {track} from '@/services/analytics';
+import Constants from 'expo-constants';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
@@ -238,8 +239,11 @@ const toggleNotifications = async () => {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
 
-        {/* App Version */}
-        <Text style={styles.versionText}>Version 1.1.0</Text>
+        {/* App Version — read from app.config.js so it moves with every
+            release instead of sitting on whatever version was typed here
+            the day this screen was written (it had drifted to 1.1.0 while
+            the app itself was on 1.2.6). */}
+        <Text style={styles.versionText}>Version {Constants.expoConfig?.version || '—'}</Text>
       </ScrollView>
       <CustomTabBar />
     </SafeAreaView>
