@@ -41,13 +41,13 @@ jobs:
         run: |
           cd ios
           # Ensure iOS deployment target is 15.1 across all project targets
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.1;/g' IpoShayak.xcodeproj/project.pbxproj
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.1;/g' IPOSahayak.xcodeproj/project.pbxproj
           
           # Disable code signing for all targets
-          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' IpoShayak.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "";/g' IpoShayak.xcodeproj/project.pbxproj
-          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' IpoShayak.xcodeproj/project.pbxproj
-          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' IpoShayak.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' IPOSahayak.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "";/g' IPOSahayak.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' IPOSahayak.xcodeproj/project.pbxproj
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' IPOSahayak.xcodeproj/project.pbxproj
           echo "Deployment target set to 15.1 and code signing disabled."
 
       - name: Install CocoaPods
@@ -59,11 +59,11 @@ jobs:
         run: |
           cd ios
           xcodebuild archive \
-            -workspace IpoShayak.xcworkspace \
-            -scheme IpoShayak \
+            -workspace IPOSahayak.xcworkspace \
+            -scheme IPOSahayak \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath "$RUNNER_TEMP/IpoShayak.xcarchive" \
+            -archivePath "$RUNNER_TEMP/IPOSahayak.xcarchive" \
             ONLY_ACTIVE_ARCH=NO \
             CODE_SIGNING_ALLOWED=YES \
             CODE_SIGNING_REQUIRED=YES \
@@ -80,23 +80,23 @@ jobs:
       - name: Package Archive into IPA
         run: |
           # Find the .app inside the archive
-          APP_PATH=$(find "$RUNNER_TEMP/IpoShayak.xcarchive" -name "IpoShayak.app" -type d | head -n 1)
+          APP_PATH=$(find "$RUNNER_TEMP/IPOSahayak.xcarchive" -name "IPOSahayak.app" -type d | head -n 1)
           echo "Found compiled app at: $APP_PATH"
           if [ -z "$APP_PATH" ]; then
-            echo "ERROR: IpoShayak.app not found in archive!"
+            echo "ERROR: IPOSahayak.app not found in archive!"
             ls -la "$RUNNER_TEMP/"
             exit 1
           fi
           mkdir -p "$RUNNER_TEMP/Payload"
           cp -R "$APP_PATH" "$RUNNER_TEMP/Payload/"
           cd "$RUNNER_TEMP"
-          zip -qr "$GITHUB_WORKSPACE/IpoShayak.ipa" Payload
-          ls -lh "$GITHUB_WORKSPACE/IpoShayak.ipa"
+          zip -qr "$GITHUB_WORKSPACE/IPOSahayak.ipa" Payload
+          ls -lh "$GITHUB_WORKSPACE/IPOSahayak.ipa"
           echo "IPA created successfully!"
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: IpoShayak-iOS-IPA
-          path: IpoShayak.ipa
+          name: IPOSahayak-iOS-IPA
+          path: IPOSahayak.ipa
           retention-days: 14
