@@ -359,7 +359,7 @@ export function IPOCard({ ipo, index = 0 }: IPOCardProps) {
           router.push({ pathname: '/live/[id]', params: { id: ipo.id, name: ipo.companyName } })
         }
       >
-        <Text style={styles.watchLiveText}>WATCH LIVE</Text>
+        <Text style={styles.watchLiveText}>Watch Live</Text>
       </TouchableOpacity>
     )}
   </View>
@@ -553,38 +553,43 @@ const getStyles = (isDark: boolean) =>
     },
     
     allotmentButton: {
-  backgroundColor: '#2cb756', // Green color for active button
-  paddingVertical: 12,
-  paddingHorizontal: 24,
-  borderRadius: 8,
-  minWidth: 180,
-  alignItems: 'center',
-},
-disabledButton: {
-  backgroundColor: '#9CA3AF', // Gray color when disabled
-},
+      flex: 1,
+      backgroundColor: '#2cb756',
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    disabledButton: {
+      backgroundColor: '#9CA3AF', // Gray color when disabled
+    },
     allotmentButtonText: {
       color: '#FFFFFF',
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       textAlign: 'center',
     },
+    // Both actions on one row, sharing the width evenly; stacked full-width
+    // buttons read as a form, not a card.
     allotmentSection: {
       marginTop: 8,
-      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 10,
+      alignItems: 'stretch',
     },
     watchLiveButton: {
+      flex: 1,
       backgroundColor: '#1E40AF',
       paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 8,
-      minWidth: 180,
+      paddingHorizontal: 12,
+      borderRadius: 10,
       alignItems: 'center',
-      marginTop: 8,
+      justifyContent: 'center',
     },
     watchLiveText: {
       color: '#FFFFFF',
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       textAlign: 'center',
     },
