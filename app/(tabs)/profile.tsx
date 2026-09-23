@@ -10,11 +10,12 @@ import {
   Switch,
   Linking,
   Platform,
+  Appearance,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
-import { User, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, Star, Bell } from 'lucide-react-native';
+import { User, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, Star, Bell, Moon } from 'lucide-react-native';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { useUser } from '@/hooks/useUser';
 import { useSavedPANs } from '@/hooks/useSavedPANs';
@@ -43,6 +44,14 @@ export default function ProfileScreen() {
     }
   })();
 }, []);
+
+// The switch drives Appearance.setColorScheme, which overrides what every
+// screen's useColorScheme() returns — no screen needs to know a setting
+// exists. The root layout re-applies the stored choice on launch.
+const toggleDarkMode = async (next: boolean) => {
+  Appearance.setColorScheme(next ? 'dark' : 'light');
+  await AsyncStorage.setItem('themeOverride', next ? 'dark' : 'light');
+};
 
 const toggleNotifications = async () => {
   if (!notificationsEnabled) {
@@ -136,6 +145,14 @@ const toggleNotifications = async () => {
       isSwitch: true,
       switchValue: notificationsEnabled,
       onToggle: toggleNotifications,
+    },
+    {
+      icon: <Moon size={20} color={isDark ? '#94A3B8' : '#64748B'} />,
+      title: 'Dark Mode',
+      subtitle: 'Switch between light and dark theme',
+      isSwitch: true,
+      switchValue: isDark,
+      onToggle: () => toggleDarkMode(!isDark),
     },
     {
       icon: <Shield size={20} color={isDark ? '#94A3B8' : '#64748B'} />,

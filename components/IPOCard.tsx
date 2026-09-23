@@ -296,6 +296,42 @@ export function IPOCard({ ipo, index = 0 }: IPOCardProps) {
               </View>
             )}
                       
+            {/* Once the share lists, how it actually opened and where it
+                trades now — both against the issue price. */}
+            {typeof ipo.listingPrice === 'number' && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Listing Price:</Text>
+                <Text
+                  style={[
+                    styles.detailValue,
+                    { color: (ipo.listingGainPct ?? 0) >= 0 ? '#10B981' : '#EF4444', fontWeight: '700' },
+                  ]}
+                >
+                  ₹{ipo.listingPrice.toFixed(2)}
+                  {typeof ipo.listingGainPct === 'number'
+                    ? ` (${ipo.listingGainPct >= 0 ? '+' : ''}${ipo.listingGainPct}%)`
+                    : ''}
+                </Text>
+              </View>
+            )}
+
+            {typeof ipo.currentPrice === 'number' && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Current Price:</Text>
+                <Text
+                  style={[
+                    styles.detailValue,
+                    { color: (ipo.currentGainPct ?? 0) >= 0 ? '#10B981' : '#EF4444', fontWeight: '700' },
+                  ]}
+                >
+                  ₹{ipo.currentPrice.toFixed(2)}
+                  {typeof ipo.currentGainPct === 'number'
+                    ? ` (${ipo.currentGainPct >= 0 ? '+' : ''}${ipo.currentGainPct}%)`
+                    : ''}
+                </Text>
+              </View>
+            )}
+
          {ipo.status === 'closed' && (
   <View style={styles.allotmentSection}>
     <TouchableOpacity
@@ -315,6 +351,17 @@ export function IPOCard({ ipo, index = 0 }: IPOCardProps) {
         {isValidUrl(ipo.allotmentout || '') ? 'View Allotment' : 'Waiting for Allotment'}
       </Text>
     </TouchableOpacity>
+
+    {!!ipo.symbol && typeof ipo.currentPrice === 'number' && (
+      <TouchableOpacity
+        style={styles.watchLiveButton}
+        onPress={() =>
+          router.push({ pathname: '/live/[id]', params: { id: ipo.id, name: ipo.companyName } })
+        }
+      >
+        <Text style={styles.watchLiveText}>WATCH LIVE</Text>
+      </TouchableOpacity>
+    )}
   </View>
 )}
 
@@ -525,6 +572,21 @@ disabledButton: {
     allotmentSection: {
       marginTop: 8,
       alignItems: 'center',
+    },
+    watchLiveButton: {
+      backgroundColor: '#1E40AF',
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 8,
+      minWidth: 180,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    watchLiveText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
+      textAlign: 'center',
     },
     // The GMP figure and the subscription count sat on one line with no way to
     // give: at a large system font "GMP: ₹223 (₹850 (34.49%))" pushed the

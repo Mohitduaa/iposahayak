@@ -37,6 +37,12 @@ export interface IPO {
   faceValue: number;
   priceRange: string;
   logo?: string;
+  /** Market data once the share lists — set by the closed-IPO endpoint. */
+  symbol?: string;
+  listingPrice?: number;
+  currentPrice?: number;
+  listingGainPct?: number;
+  currentGainPct?: number;
 }
 
 export interface AllotmentStatus {

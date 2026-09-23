@@ -208,6 +208,13 @@ export const mapAPIData = (data: any[]): IPO[] =>
         totalIssueSize: String(item.IssueSize || 'N/A'),
         faceValue: Number(item.faceValue) || 0,
         priceRange: String(item.priceRange || ''),
+        // Market data arrives only from the closed-IPO endpoint, and only
+        // once the backend has resolved the share's ticker.
+        symbol: item.symbol && item.symbol !== '-' ? String(item.symbol) : undefined,
+        listingPrice: typeof item.listingPrice === 'number' ? item.listingPrice : undefined,
+        currentPrice: typeof item.currentPrice === 'number' ? item.currentPrice : undefined,
+        listingGainPct: typeof item.listingGainPct === 'number' ? item.listingGainPct : undefined,
+        currentGainPct: typeof item.currentGainPct === 'number' ? item.currentGainPct : undefined,
       } as IPO;
     });
 

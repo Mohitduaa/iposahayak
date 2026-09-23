@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "IPO Sahayak",
     slug: "IpoShayak",
-    version: "1.2.6",
+    version: "1.2.7",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
     scheme: "myapp",

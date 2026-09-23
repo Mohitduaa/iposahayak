@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, Appearance } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
@@ -30,6 +30,17 @@ export default function RootLayout() {
   // the splash screen forever. The root layout mounts on every entry path.
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  // Re-apply the Profile screen's dark-mode choice before anything renders
+  // twice; without this the app opens in the system theme and snaps to the
+  // chosen one only after visiting Profile.
+  useEffect(() => {
+    AsyncStorage.getItem('themeOverride')
+      .then((stored) => {
+        if (stored === 'dark' || stored === 'light') Appearance.setColorScheme(stored);
+      })
+      .catch(() => {});
   }, []);
 
   // 🔹 OneSignal init
