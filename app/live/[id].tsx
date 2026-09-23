@@ -35,11 +35,26 @@ interface ExchangeQuote {
   currentGainPct: number | null;
 }
 
+interface DepthLevel {
+  price: number;
+  qty: number;
+}
+
+interface MarketDepth {
+  exchange: 'BSE';
+  bid: DepthLevel[];
+  ask: DepthLevel[];
+  totalBuyQty: number;
+  totalSellQty: number;
+  asOf: string | null;
+}
+
 interface LiveQuote extends ExchangeQuote {
   success: boolean;
   name: string;
   issuePrice: number | null;
   exchanges?: ExchangeQuote[];
+  depth?: MarketDepth | null;
 }
 
 const POLL_MS = 15000;
@@ -212,6 +227,51 @@ export default function WatchLiveScreen() {
               )}
             </View>
 
+            {/* BSE's 5-level order book: buy side left in blue, sell side
+                right in red, totals at the foot — the reading order every
+                trading terminal has taught. */}
+            {quote.depth && (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Market Depth — {quote.depth.exchange}</Text>
+                <View style={styles.depthHead}>
+                  <Text style={[styles.depthHeadCell, styles.depthLeft]}>Qty</Text>
+                  <Text style={[styles.depthHeadCell, styles.depthRightAlign]}>BUY</Text>
+                  <Text style={[styles.depthHeadCell, styles.depthLeftPad]}>SELL</Text>
+                  <Text style={[styles.depthHeadCell, styles.depthRightAlign]}>Qty</Text>
+                </View>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <View style={styles.depthRow} key={i}>
+                    <Text style={[styles.depthCell, styles.depthLeft, styles.depthBuy]}>
+                      {quote.depth!.bid[i]?.qty?.toLocaleString('en-IN') ?? '0'}
+                    </Text>
+                    <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthBuy]}>
+                      {(quote.depth!.bid[i]?.price ?? 0).toFixed(2)}
+                    </Text>
+                    <Text style={[styles.depthCell, styles.depthLeftPad, styles.depthSell]}>
+                      {(quote.depth!.ask[i]?.price ?? 0).toFixed(2)}
+                    </Text>
+                    <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthSell]}>
+                      {quote.depth!.ask[i]?.qty?.toLocaleString('en-IN') ?? '0'}
+                    </Text>
+                  </View>
+                ))}
+                <View style={[styles.depthRow, styles.depthTotalRow]}>
+                  <Text style={[styles.depthCell, styles.depthLeft, styles.depthBuy, styles.depthTotal]}>
+                    {quote.depth.totalBuyQty.toLocaleString('en-IN')}
+                  </Text>
+                  <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthTotal, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
+                    Total
+                  </Text>
+                  <Text style={[styles.depthCell, styles.depthLeftPad, styles.depthTotal, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
+                    Shares
+                  </Text>
+                  <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthSell, styles.depthTotal]}>
+                    {quote.depth.totalSellQty.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Day's Range — {shown.exchange}</Text>
               <View style={styles.rangeLabels}>
@@ -328,6 +388,32 @@ const getStyles = (isDark: boolean) =>
     },
     watchlistBarActive: { backgroundColor: '#15803D' },
     watchlistBarText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
+    depthHead: {
+      flexDirection: 'row',
+      paddingBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#334155' : '#E2E8F0',
+    },
+    depthHeadCell: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '700',
+      color: isDark ? '#94A3B8' : '#64748B',
+    },
+    depthRow: {
+      flexDirection: 'row',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? '#1E293B' : '#F1F5F9',
+    },
+    depthCell: { flex: 1, fontSize: 13, fontWeight: '600' },
+    depthLeft: { textAlign: 'left' },
+    depthRightAlign: { textAlign: 'right' },
+    depthLeftPad: { textAlign: 'left', paddingLeft: 14 },
+    depthBuy: { color: '#3B82F6' },
+    depthSell: { color: '#EF4444' },
+    depthTotalRow: { borderBottomWidth: 0, paddingTop: 10 },
+    depthTotal: { fontWeight: '700', fontSize: 13 },
     priceCard: {
       alignItems: 'center',
       backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
