@@ -15,9 +15,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react-native';
 import { apiUrl, fetchJson } from '@/services/api';
 
-interface LiveQuote {
-  success: boolean;
-  name: string;
+interface ExchangeQuote {
+  exchange: 'NSE' | 'BSE';
   symbol: string;
   currentPrice: number;
   prevClose: number | null;
@@ -29,7 +28,13 @@ interface LiveQuote {
   changePct: number | null;
   listingGainPct: number | null;
   currentGainPct: number | null;
+}
+
+interface LiveQuote extends ExchangeQuote {
+  success: boolean;
+  name: string;
   issuePrice: number | null;
+  exchanges?: ExchangeQuote[];
 }
 
 const POLL_MS = 15000;
@@ -43,6 +48,7 @@ export default function WatchLiveScreen() {
   const [quote, setQuote] = useState<LiveQuote | null>(null);
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [exchange, setExchange] = useState<'NSE' | 'BSE' | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
@@ -50,6 +56,9 @@ export default function WatchLiveScreen() {
     if (data?.success) {
       setQuote(data);
       setFailed(false);
+      // First load decides the tab; later polls must not yank the user off
+      // the exchange they chose.
+      setExchange((chosen) => chosen || (data.exchanges?.[0]?.exchange ?? data.exchange ?? 'NSE'));
     } else if (!quote) {
       setFailed(true);
     }
@@ -65,18 +74,25 @@ export default function WatchLiveScreen() {
   }, [id]);
 
   const styles = getStyles(isDark);
-  const up = (quote?.change ?? 0) >= 0;
+
+  const tabs: ExchangeQuote[] = quote?.exchanges?.length ? quote.exchanges : quote ? [quote] : [];
+  const shown: ExchangeQuote | null =
+    tabs.find((tab) => tab.exchange === exchange) || tabs[0] || null;
+
+  const up = (shown?.change ?? 0) >= 0;
   const tone = up ? '#10B981' : '#EF4444';
 
   const rangePosition = (() => {
-    if (!quote || quote.dayLow == null || quote.dayHigh == null) return 0;
-    const span = quote.dayHigh - quote.dayLow;
+    if (!shown || shown.dayLow == null || shown.dayHigh == null) return 0;
+    const span = shown.dayHigh - shown.dayLow;
     if (span <= 0) return 1;
-    return Math.min(1, Math.max(0, (quote.currentPrice - quote.dayLow) / span));
+    return Math.min(1, Math.max(0, (shown.currentPrice - shown.dayLow) / span));
   })();
 
   const signed = (value: number | null | undefined, suffix = '') =>
     value == null ? '—' : `${value >= 0 ? '+' : ''}${value}${suffix}`;
+
+  const baseSymbol = (symbol?: string) => String(symbol || '').replace(/\.(NS|BO)$/, '');
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -90,7 +106,7 @@ export default function WatchLiveScreen() {
           <Text style={styles.headerTitle} numberOfLines={1}>
             {quote?.name || name || 'Live Price'}
           </Text>
-          {!!quote?.symbol && <Text style={styles.headerSubtitle}>{quote.symbol}</Text>}
+          {!!shown?.symbol && <Text style={styles.headerSubtitle}>{shown.symbol}</Text>}
         </View>
       </View>
 
@@ -120,29 +136,61 @@ export default function WatchLiveScreen() {
           </View>
         )}
 
-        {quote && (
+        {quote && shown && (
           <>
+            {/* One card per exchange the share trades on; the selected one
+                drives everything below. */}
+            {tabs.length > 1 && (
+              <View style={styles.exchangeRow}>
+                {tabs.map((tab) => {
+                  const active = tab.exchange === shown.exchange;
+                  const tabUp = (tab.change ?? 0) >= 0;
+                  const tabTone = tabUp ? '#10B981' : '#EF4444';
+                  return (
+                    <TouchableOpacity
+                      key={tab.exchange}
+                      style={[styles.exchangeTab, active && styles.exchangeTabActive]}
+                      onPress={() => setExchange(tab.exchange)}
+                    >
+                      <Text style={[styles.exchangeSymbol, !active && styles.exchangeMuted]}>
+                        {baseSymbol(tab.symbol)}
+                      </Text>
+                      <Text style={[styles.exchangeName, !active && styles.exchangeMuted]}>
+                        {tab.exchange}
+                      </Text>
+                      <Text style={[styles.exchangePrice, { color: tabTone }]}>
+                        {tab.currentPrice.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.exchangeChange, { color: tabTone }]}>
+                        {signed(tab.change)} ({signed(tab.changePct, '%')})
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
             <View style={styles.priceCard}>
-              <Text style={styles.bigPrice}>₹{quote.currentPrice.toFixed(2)}</Text>
+              <Text style={styles.bigPrice}>₹{shown.currentPrice.toFixed(2)}</Text>
               <View style={[styles.changeChip, { backgroundColor: `${tone}22` }]}>
                 {up ? <TrendingUp size={16} color={tone} /> : <TrendingDown size={16} color={tone} />}
                 <Text style={[styles.changeText, { color: tone }]}>
-                  {signed(quote.change)} ({signed(quote.changePct, '%')}) today
+                  {signed(shown.change)} ({signed(shown.changePct, '%')}) today
                 </Text>
               </View>
-              {quote.currentGainPct != null && (
+              {shown.currentGainPct != null && (
                 <Text style={styles.sinceIssue}>
-                  {signed(quote.currentGainPct, '%')} since issue
+                  {signed(shown.currentGainPct, '%')} since issue
                   {quote.issuePrice != null ? ` (₹${quote.issuePrice})` : ''}
                 </Text>
               )}
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Day's Range</Text>
+              <Text style={styles.cardTitle}>Day's Range — {shown.exchange}</Text>
               <View style={styles.rangeLabels}>
-                <Text style={styles.rangeValue}>₹{quote.dayLow?.toFixed(2) ?? '—'}</Text>
-                <Text style={styles.rangeValue}>₹{quote.dayHigh?.toFixed(2) ?? '—'}</Text>
+                <Text style={styles.rangeValue}>₹{shown.dayLow?.toFixed(2) ?? '—'}</Text>
+                <Text style={styles.rangeValue}>₹{shown.dayHigh?.toFixed(2) ?? '—'}</Text>
               </View>
               <View style={styles.rangeTrack}>
                 <View style={[styles.rangeFill, { flex: rangePosition }]} />
@@ -153,13 +201,13 @@ export default function WatchLiveScreen() {
 
             <View style={styles.card}>
               {[
-                ['Previous Close', quote.prevClose != null ? `₹${quote.prevClose.toFixed(2)}` : '—'],
-                ['Listing Price', quote.listingPrice != null ? `₹${quote.listingPrice.toFixed(2)}` : '—'],
+                ['Previous Close', shown.prevClose != null ? `₹${shown.prevClose.toFixed(2)}` : '—'],
+                ['Listing Price', shown.listingPrice != null ? `₹${shown.listingPrice.toFixed(2)}` : '—'],
                 [
                   'Listing Gain',
-                  quote.listingGainPct != null ? signed(quote.listingGainPct, '%') : '—',
+                  shown.listingGainPct != null ? signed(shown.listingGainPct, '%') : '—',
                 ],
-                ['Volume', quote.volume != null ? quote.volume.toLocaleString('en-IN') : '—'],
+                ['Volume', shown.volume != null ? shown.volume.toLocaleString('en-IN') : '—'],
               ].map(([label, value]) => (
                 <View style={styles.row} key={String(label)}>
                   <Text style={styles.rowLabel}>{label}</Text>
@@ -208,6 +256,26 @@ const getStyles = (isDark: boolean) =>
     headerSubtitle: { fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', marginTop: 2 },
     scroll: { flex: 1 },
     scrollContent: { padding: 16, paddingBottom: 32 },
+    exchangeRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+    exchangeTab: {
+      flex: 1,
+      alignItems: 'center',
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: isDark ? '#334155' : '#E2E8F0',
+      paddingVertical: 12,
+    },
+    exchangeTabActive: { borderColor: '#3B82F6' },
+    exchangeSymbol: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: isDark ? '#F1F5F9' : '#1E293B',
+    },
+    exchangeName: { fontSize: 12, color: isDark ? '#94A3B8' : '#64748B', marginTop: 1 },
+    exchangePrice: { fontSize: 17, fontWeight: '700', marginTop: 4 },
+    exchangeChange: { fontSize: 12, fontWeight: '600', marginTop: 1 },
+    exchangeMuted: { opacity: 0.55 },
     priceCard: {
       alignItems: 'center',
       backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
