@@ -12,17 +12,22 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react-native';
+import { ArrowLeft, TrendingUp, TrendingDown, Star } from 'lucide-react-native';
 import { apiUrl, fetchJson } from '@/services/api';
+import { useWatchlist } from '@/hooks/useWatchlist';
 
 interface ExchangeQuote {
   exchange: 'NSE' | 'BSE';
   symbol: string;
   currentPrice: number;
   prevClose: number | null;
+  open: number | null;
   dayHigh: number | null;
   dayLow: number | null;
   volume: number | null;
+  high52w: number | null;
+  low52w: number | null;
+  tradedAt: string | null;
   listingPrice: number | null;
   change: number | null;
   changePct: number | null;
@@ -50,6 +55,7 @@ export default function WatchLiveScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [exchange, setExchange] = useState<'NSE' | 'BSE' | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { has, toggle } = useWatchlist();
 
   const load = async () => {
     const data = await fetchJson<LiveQuote>(apiUrl(`/api/quote/${id}`));
@@ -170,6 +176,26 @@ export default function WatchLiveScreen() {
               </View>
             )}
 
+            <TouchableOpacity
+              style={[styles.watchlistBar, has(String(id)) && styles.watchlistBarActive]}
+              onPress={() =>
+                toggle({
+                  id: String(id),
+                  name: quote.name || String(name || ''),
+                  symbol: baseSymbol(shown.symbol),
+                })
+              }
+            >
+              <Star
+                size={18}
+                color="#FFFFFF"
+                fill={has(String(id)) ? '#FFFFFF' : 'transparent'}
+              />
+              <Text style={styles.watchlistBarText}>
+                {has(String(id)) ? 'In Watchlist' : 'Add to Watchlist'}
+              </Text>
+            </TouchableOpacity>
+
             <View style={styles.priceCard}>
               <Text style={styles.bigPrice}>₹{shown.currentPrice.toFixed(2)}</Text>
               <View style={[styles.changeChip, { backgroundColor: `${tone}22` }]}>
@@ -201,6 +227,7 @@ export default function WatchLiveScreen() {
 
             <View style={styles.card}>
               {[
+                ['Open', shown.open != null ? `₹${shown.open.toFixed(2)}` : '—'],
                 ['Previous Close', shown.prevClose != null ? `₹${shown.prevClose.toFixed(2)}` : '—'],
                 ['Listing Price', shown.listingPrice != null ? `₹${shown.listingPrice.toFixed(2)}` : '—'],
                 [
@@ -208,6 +235,19 @@ export default function WatchLiveScreen() {
                   shown.listingGainPct != null ? signed(shown.listingGainPct, '%') : '—',
                 ],
                 ['Volume', shown.volume != null ? shown.volume.toLocaleString('en-IN') : '—'],
+                ['52W High', shown.high52w != null ? `₹${shown.high52w.toFixed(2)}` : '—'],
+                ['52W Low', shown.low52w != null ? `₹${shown.low52w.toFixed(2)}` : '—'],
+                [
+                  'Last Traded',
+                  shown.tradedAt
+                    ? new Date(shown.tradedAt).toLocaleString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                    : '—',
+                ],
               ].map(([label, value]) => (
                 <View style={styles.row} key={String(label)}>
                   <Text style={styles.rowLabel}>{label}</Text>
@@ -276,6 +316,18 @@ const getStyles = (isDark: boolean) =>
     exchangePrice: { fontSize: 17, fontWeight: '700', marginTop: 4 },
     exchangeChange: { fontSize: 12, fontWeight: '600', marginTop: 1 },
     exchangeMuted: { opacity: 0.55 },
+    watchlistBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: '#16A34A',
+      borderRadius: 12,
+      paddingVertical: 13,
+      marginBottom: 14,
+    },
+    watchlistBarActive: { backgroundColor: '#15803D' },
+    watchlistBarText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
     priceCard: {
       alignItems: 'center',
       backgroundColor: isDark ? '#1E293B' : '#FFFFFF',

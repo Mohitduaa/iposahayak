@@ -15,7 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
-import { User, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, Star, Bell, Moon } from 'lucide-react-native';
+import { User, Shield, CircleHelp as HelpCircle, LogOut, ChevronRight, Star, Bell, Moon, Bookmark } from 'lucide-react-native';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { useUser } from '@/hooks/useUser';
 import { useSavedPANs } from '@/hooks/useSavedPANs';
@@ -148,6 +148,12 @@ const toggleNotifications = async () => {
       isSwitch: true,
       switchValue: notificationsEnabled,
       onToggle: toggleNotifications,
+    },
+    {
+      icon: <Bookmark size={20} color={isDark ? '#94A3B8' : '#64748B'} />,
+      title: 'My Watchlist',
+      subtitle: 'Live prices of shares you follow',
+      onPress: () => router.push('/watchlist'),
     },
     {
       icon: <Moon size={20} color={isDark ? '#94A3B8' : '#64748B'} />,
