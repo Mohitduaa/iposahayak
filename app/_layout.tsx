@@ -36,6 +36,8 @@ export default function RootLayout() {
   // twice; without this the app opens in the system theme and snaps to the
   // chosen one only after visiting Profile.
   useEffect(() => {
+    // react-native-web's Appearance shim has no setColorScheme
+    if (typeof Appearance.setColorScheme !== 'function') return;
     AsyncStorage.getItem('themeOverride')
       .then((stored) => {
         if (stored === 'dark' || stored === 'light') Appearance.setColorScheme(stored);

@@ -49,6 +49,9 @@ export default function ProfileScreen() {
 // screen's useColorScheme() returns — no screen needs to know a setting
 // exists. The root layout re-applies the stored choice on launch.
 const toggleDarkMode = async (next: boolean) => {
+  // react-native-web's Appearance shim has no setColorScheme — on the web
+  // preview the switch simply can't retheme; both stores ship native.
+  if (typeof Appearance.setColorScheme !== 'function') return;
   Appearance.setColorScheme(next ? 'dark' : 'light');
   await AsyncStorage.setItem('themeOverride', next ? 'dark' : 'light');
 };
