@@ -1,4 +1,12 @@
 export default {
+  // AdMob application ids. These are Google's official TEST app ids so the
+  // build runs today; replace both with the real ones from the AdMob console
+  // (Apps → App settings → App ID, "ca-app-pub-5670091853008171~…") before a
+  // store release, or ads will stay test ads.
+  "react-native-google-mobile-ads": {
+    android_app_id: "ca-app-pub-3940256099942544~3347511713",
+    ios_app_id: "ca-app-pub-3940256099942544~1458002511",
+  },
   expo: {
     name: "IPO Sahayak",
     slug: "IpoShayak",
@@ -40,6 +48,9 @@ export default {
       // to receive OneSignal pushes on iOS: the entitlement said development,
       // the signing said otherwise, and iOS just dropped the registration.
       ["onesignal-expo-plugin", { mode: "production" }],
+      // Reads the react-native-google-mobile-ads block above and writes the
+      // AdMob app id into AndroidManifest/Info.plist at prebuild.
+      "react-native-google-mobile-ads",
       "expo-router",
       "expo-font",
       "expo-web-browser",

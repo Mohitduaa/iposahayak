@@ -18,6 +18,7 @@ import { SavedPANSelector } from '@/components/SavedPANSelector';
 import { AddPANModal } from '@/components/AddPANModal';
 import { AllotmentResultsModal } from '@/components/AllotmentResultsModal';
 import { CustomTabBar } from '@/components/CustomTabBar';
+import { AdBanner } from '@/components/AdBanner';
 import { AllotmentStatus } from '@/types';
 import { RegistrarType } from '@/services/registrar';
 import { describeStatus } from '@/components/allotmentStatus';
@@ -232,6 +233,7 @@ export default function AllotmentScreen() {
         results={allotmentResults}
         ipoName={selectedIPO?.name || 'Selected IPO'}
       />
+      <AdBanner />
       <CustomTabBar />
     </SafeAreaView>
   );

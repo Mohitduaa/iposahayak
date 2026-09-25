@@ -18,6 +18,7 @@ import { IPOCard } from '@/components/IPOCard';
 import { StatsCard } from '@/components/StatsCard';
 import { FilterChips } from '@/components/FilterChips';
 import { CustomTabBar } from '@/components/CustomTabBar';
+import { AdBanner } from '@/components/AdBanner';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { EmptyState } from '@/components/EmptyState';
 import { useIPOData } from '@/hooks/useIPOData';
@@ -269,6 +270,7 @@ export default function IPODashboard() {
           }
         />
             )}
+      <AdBanner />
       <CustomTabBar />
     </SafeAreaView>
   );
