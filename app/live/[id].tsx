@@ -41,7 +41,7 @@ interface DepthLevel {
 }
 
 interface MarketDepth {
-  exchange: 'BSE';
+  exchange: 'NSE' | 'BSE';
   bid: DepthLevel[];
   ask: DepthLevel[];
   totalBuyQty: number;
@@ -55,6 +55,7 @@ interface LiveQuote extends ExchangeQuote {
   issuePrice: number | null;
   exchanges?: ExchangeQuote[];
   depth?: MarketDepth | null;
+  depths?: Partial<Record<'NSE' | 'BSE', MarketDepth>>;
 }
 
 const POLL_MS = 15000;
@@ -112,6 +113,13 @@ export default function WatchLiveScreen() {
 
   const signed = (value: number | null | undefined, suffix = '') =>
     value == null ? '—' : `${value >= 0 ? '+' : ''}${value}${suffix}`;
+
+  // The selected tab's own book: NSE tab shows NSE's, BSE tab BSE's. The
+  // flat `depth` is what older backend responses carried.
+  const depthShown = shown
+    ? quote?.depths?.[shown.exchange] ??
+      (quote?.depth && quote.depth.exchange === shown.exchange ? quote.depth : null)
+    : null;
 
   const baseSymbol = (symbol?: string) => String(symbol || '').replace(/\.(NS|BO)$/, '');
 
@@ -230,9 +238,9 @@ export default function WatchLiveScreen() {
             {/* BSE's 5-level order book: buy side left in blue, sell side
                 right in red, totals at the foot — the reading order every
                 trading terminal has taught. */}
-            {quote.depth && (
+            {depthShown && (
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>Market Depth — {quote.depth.exchange}</Text>
+                <Text style={styles.cardTitle}>Market Depth — {depthShown.exchange}</Text>
                 <View style={styles.depthHead}>
                   <Text style={[styles.depthHeadCell, styles.depthLeft]}>Qty</Text>
                   <Text style={[styles.depthHeadCell, styles.depthRightAlign]}>BUY</Text>
@@ -242,22 +250,22 @@ export default function WatchLiveScreen() {
                 {[0, 1, 2, 3, 4].map((i) => (
                   <View style={styles.depthRow} key={i}>
                     <Text style={[styles.depthCell, styles.depthLeft, styles.depthBuy]}>
-                      {quote.depth!.bid[i]?.qty?.toLocaleString('en-IN') ?? '0'}
+                      {depthShown.bid[i]?.qty?.toLocaleString('en-IN') ?? '0'}
                     </Text>
                     <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthBuy]}>
-                      {(quote.depth!.bid[i]?.price ?? 0).toFixed(2)}
+                      {(depthShown.bid[i]?.price ?? 0).toFixed(2)}
                     </Text>
                     <Text style={[styles.depthCell, styles.depthLeftPad, styles.depthSell]}>
-                      {(quote.depth!.ask[i]?.price ?? 0).toFixed(2)}
+                      {(depthShown.ask[i]?.price ?? 0).toFixed(2)}
                     </Text>
                     <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthSell]}>
-                      {quote.depth!.ask[i]?.qty?.toLocaleString('en-IN') ?? '0'}
+                      {depthShown.ask[i]?.qty?.toLocaleString('en-IN') ?? '0'}
                     </Text>
                   </View>
                 ))}
                 <View style={[styles.depthRow, styles.depthTotalRow]}>
                   <Text style={[styles.depthCell, styles.depthLeft, styles.depthBuy, styles.depthTotal]}>
-                    {quote.depth.totalBuyQty.toLocaleString('en-IN')}
+                    {depthShown.totalBuyQty.toLocaleString('en-IN')}
                   </Text>
                   <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthTotal, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
                     Total
@@ -266,7 +274,7 @@ export default function WatchLiveScreen() {
                     Shares
                   </Text>
                   <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthSell, styles.depthTotal]}>
-                    {quote.depth.totalSellQty.toLocaleString('en-IN')}
+                    {depthShown.totalSellQty.toLocaleString('en-IN')}
                   </Text>
                 </View>
               </View>
