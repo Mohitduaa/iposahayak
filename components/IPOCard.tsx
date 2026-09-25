@@ -278,8 +278,10 @@ export function IPOCard({ ipo, index = 0 }: IPOCardProps) {
               <Text style={styles.detailValue}>{String(ipo.lotSize || 0)} shares</Text>
             </View>
             
-            {/* Profit Per Lot */}
-            {!!(ipo.gmp && ipo.issuePrice && ipo.lotSize) && (
+            {/* Profit Per Lot — a GMP-based estimate, so it only makes sense
+                before listing; once the share trades, the real listing and
+                current prices below replace it. */}
+            {!!(ipo.gmp && ipo.issuePrice && ipo.lotSize) && typeof ipo.listingPrice !== 'number' && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Profit Per lot:</Text>
                 <Text style={[
