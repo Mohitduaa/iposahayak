@@ -168,6 +168,9 @@ export default function AllotmentScreen() {
               <TouchableOpacity onPress={() => setShowResultsModal(true)}>
                 <Text style={styles.resultsLink}>Details</Text>
               </TouchableOpacity>
+              <TouchableOpacity onPress={() => setAllotmentResults([])}>
+                <Text style={styles.resultsClear}>Clear</Text>
+              </TouchableOpacity>
             </View>
 
             {allotmentResults.map((result, index) => {
@@ -295,6 +298,12 @@ const getStyles = (isDark: boolean) =>
     fontSize: 14,
     fontWeight: '600',
     color: isDark ? '#60A5FA' : '#1E40AF',
+  },
+  resultsClear: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: isDark ? '#F87171' : '#DC2626',
+    marginLeft: 14,
   },
   resultRow: {
     flexDirection: 'row',
