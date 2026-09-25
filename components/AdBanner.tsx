@@ -10,7 +10,10 @@ import { View, Platform } from 'react-native';
 // (create them in the AdMob console under each app, then paste here) in a
 // release build.
 const PROD_UNITS = {
-  android: 'ca-app-pub-5670091853008171/REPLACE_WITH_ANDROID_BANNER_UNIT',
+  // "Bottom Banner" in the AdMob console
+  android: 'ca-app-pub-5670091853008171/7647250175',
+  // No iOS app in the AdMob console yet — the placeholder keeps the banner
+  // hidden on iOS release builds until one is created and pasted here.
   ios: 'ca-app-pub-5670091853008171/REPLACE_WITH_IOS_BANNER_UNIT',
 };
 
