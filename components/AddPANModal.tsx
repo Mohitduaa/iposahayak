@@ -103,7 +103,6 @@ export function AddPANModal({ visible, onClose, onAddPAN, editingPAN }: AddPANMo
               maxLength={10}
               autoCapitalize="characters"
               placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-              editable={!editingPAN}
             />
           </View>
 

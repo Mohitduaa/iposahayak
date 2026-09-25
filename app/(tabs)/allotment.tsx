@@ -40,7 +40,7 @@ export default function AllotmentScreen() {
   const [allotmentResults, setAllotmentResults] = useState<AllotmentStatus[]>([]);
   const [showResultsModal, setShowResultsModal] = useState(false);
 
-  const { savedPANs, addPAN, removePAN, updatePANName } = useSavedPANs();
+  const { savedPANs, addPAN, removePAN, updatePAN } = useSavedPANs();
   const { checkAllotment, loading } = useAllotmentCheck();
 
   const handleCheckAllotment = async () => {
@@ -68,17 +68,17 @@ export default function AllotmentScreen() {
   };
 
   const handleAddPAN = (pan: string, name: string) => {
-    // Editing reuses this modal, and the PAN field is disabled while editing
-    // (only the name can change) — so this must update the existing entry,
-    // not go through addPAN, which refuses a PAN already in the list. That
-    // refusal is exactly right for a genuine add; it was wrongly firing on
-    // every edit too, since the PAN being "edited" is by definition already
-    // saved.
+    // Editing reuses this modal. Both fields are editable there — a typo in
+    // the number itself is the most common reason to open Edit — so the
+    // whole entry is updated in place; updatePAN refuses only a new number
+    // that collides with a different saved entry.
     if (editingPAN) {
-      updatePANName(editingPAN.pan, name);
-      setShowAddPANModal(false);
-      setEditingPAN(undefined);
-      return true;
+      const updated = updatePAN(editingPAN.pan, pan, name);
+      if (updated) {
+        setShowAddPANModal(false);
+        setEditingPAN(undefined);
+      }
+      return updated;
     }
 
     const success = addPAN(pan, name);

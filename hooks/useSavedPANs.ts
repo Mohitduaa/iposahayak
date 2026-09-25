@@ -92,6 +92,24 @@ export function updatePANName(pan: string, newName: string) {
   persist(savedPANs);
 }
 
+/**
+ * Edit an entry in place — the PAN itself included, for fixing a typo in a
+ * saved number. Refuses a new PAN that would collide with a different entry.
+ */
+export function updatePAN(oldPan: string, newPan: string, newName: string): boolean {
+  const clean = String(newPan || '').trim().toUpperCase();
+  if (clean.length !== 10) return false;
+  if (savedPANs.some((saved) => saved.pan === clean && saved.pan !== oldPan)) return false;
+
+  publish(
+    savedPANs.map((saved) =>
+      saved.pan === oldPan ? { ...saved, pan: clean, name: newName } : saved
+    )
+  );
+  persist(savedPANs);
+  return true;
+}
+
 export function useSavedPANs() {
   const [pans, setPans] = useState<SavedPAN[]>(savedPANs);
 
@@ -104,5 +122,5 @@ export function useSavedPANs() {
     };
   }, []);
 
-  return { savedPANs: pans, addPAN, removePAN, updatePANName };
+  return { savedPANs: pans, addPAN, removePAN, updatePANName, updatePAN };
 }
