@@ -1,11 +1,4 @@
 export default {
-  // AdMob application ids. Android carries the real app id; iOS keeps
-  // Google's TEST app id until the app exists in the AdMob console for iOS —
-  // replace it there before any App Store release.
-  "react-native-google-mobile-ads": {
-    android_app_id: "ca-app-pub-5670091853008171~2396523308",
-    ios_app_id: "ca-app-pub-3940256099942544~1458002511",
-  },
   expo: {
     name: "IPO Sahayak",
     slug: "IpoShayak",
@@ -47,9 +40,18 @@ export default {
       // to receive OneSignal pushes on iOS: the entitlement said development,
       // the signing said otherwise, and iOS just dropped the registration.
       ["onesignal-expo-plugin", { mode: "production" }],
-      // Reads the react-native-google-mobile-ads block above and writes the
-      // AdMob app id into AndroidManifest/Info.plist at prebuild.
-      "react-native-google-mobile-ads",
+      // Writes the AdMob app ids into AndroidManifest/Info.plist at prebuild.
+      // The ids MUST be plugin props (this version ignores a root-level
+      // "react-native-google-mobile-ads" block) — without them the native
+      // SDK crashes the moment the app opens. Android is the real id; iOS
+      // is Google's TEST app id until the app exists in AdMob for iOS.
+      [
+        "react-native-google-mobile-ads",
+        {
+          androidAppId: "ca-app-pub-5670091853008171~2396523308",
+          iosAppId: "ca-app-pub-3940256099942544~1458002511",
+        },
+      ],
       "expo-router",
       "expo-font",
       "expo-web-browser",
