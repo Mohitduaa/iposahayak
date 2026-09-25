@@ -110,6 +110,14 @@ function bestMatch(ipoName: string, companies: RegistrarCompany[]): RegistrarCom
   const target = normalise(ipoName);
   if (!target) return null;
 
+  // The backend already matched each listing to our own IPO names — with
+  // abbreviation handling this fuzzy pass does not have ("NSE" against
+  // "National Stock Exchange Of India Limited"). Trust its verdict first.
+  const backendMatched = companies.find(
+    (company) => company.ipoName && normalise(company.ipoName) === target
+  );
+  if (backendMatched) return backendMatched;
+
   const scored = companies.map((company) => ({ company, name: normalise(company.name) }));
 
   const exact = scored.find((row) => row.name === target);

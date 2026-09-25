@@ -111,7 +111,13 @@ export function IPODetailsView({ ipo, onClose }: IPODetailsViewProps) {
   /** What the button says when there is nothing to check yet. */
   const waitingLabel = () => {
     if (findingRegistrar) return 'Checking availability…';
-    if (ipo.allotment) return `Allotment on ${ipo.allotment}`;
+    // "Allotment on <date>" is a promise about the future; once that date
+    // has passed and the registrar still has not listed the company, the
+    // honest reading is that the result just is not out yet.
+    const allotmentDate = new Date(ipo.allotment || '');
+    if (ipo.allotment && !Number.isNaN(allotmentDate.getTime()) && allotmentDate > new Date()) {
+      return `Allotment on ${ipo.allotment}`;
+    }
     return 'Allotment not out yet';
   };
 
