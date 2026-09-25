@@ -279,9 +279,11 @@ export function IPOCard({ ipo, index = 0 }: IPOCardProps) {
             </View>
             
             {/* Profit Per Lot — a GMP-based estimate, so it only makes sense
-                before listing; once the share trades, the real listing and
-                current prices below replace it. */}
-            {!!(ipo.gmp && ipo.issuePrice && ipo.lotSize) && typeof ipo.listingPrice !== 'number' && (
+                before listing; once the share trades (either real price is
+                known), the actual prices below replace it. */}
+            {!!(ipo.gmp && ipo.issuePrice && ipo.lotSize) &&
+              typeof ipo.listingPrice !== 'number' &&
+              typeof ipo.currentPrice !== 'number' && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Profit Per lot:</Text>
                 <Text style={[

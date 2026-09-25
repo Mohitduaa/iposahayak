@@ -13,22 +13,24 @@ const KEY = 'watchlist';
 // Module-level store so every mounted hook shows the same list the moment
 // any screen changes it, without a round trip through storage.
 let items: WatchlistItem[] = [];
-let loaded = false;
+let loading: Promise<void> | null = null;
 const listeners = new Set<(next: WatchlistItem[]) => void>();
 
-async function ensureLoaded() {
-  if (loaded) return;
-  loaded = true;
-  try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) items = parsed;
+function ensureLoaded(): Promise<void> {
+  if (loading) return loading;
+  loading = (async () => {
+    try {
+      const raw = await AsyncStorage.getItem(KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) items = parsed;
+      }
+    } catch {
+      // Unreadable storage: start empty rather than crash.
     }
-  } catch {
-    // Unreadable storage: start empty rather than crash.
-  }
-  listeners.forEach((fn) => fn(items));
+    listeners.forEach((fn) => fn(items));
+  })();
+  return loading;
 }
 
 function commit(next: WatchlistItem[]) {
@@ -42,6 +44,9 @@ export function useWatchlist() {
 
   useEffect(() => {
     listeners.add(setList);
+    // A component mounting between someone else's commit and this effect
+    // would otherwise render the initial snapshot forever.
+    setList(items);
     ensureLoaded();
     return () => {
       listeners.delete(setList);
@@ -50,7 +55,11 @@ export function useWatchlist() {
 
   const has = useCallback((id: string) => list.some((item) => item.id === id), [list]);
 
-  const toggle = useCallback((item: WatchlistItem) => {
+  // Writes wait for the stored list first: committing against the empty
+  // initial array before AsyncStorage resolves would persist a one-item
+  // list over everything previously saved.
+  const toggle = useCallback(async (item: WatchlistItem) => {
+    await ensureLoaded();
     if (items.some((row) => row.id === item.id)) {
       commit(items.filter((row) => row.id !== item.id));
     } else {
@@ -58,7 +67,8 @@ export function useWatchlist() {
     }
   }, []);
 
-  const remove = useCallback((id: string) => {
+  const remove = useCallback(async (id: string) => {
+    await ensureLoaded();
     commit(items.filter((row) => row.id !== id));
   }, []);
 

@@ -71,17 +71,22 @@ export default function WatchLiveScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [exchange, setExchange] = useState<'NSE' | 'BSE' | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // The poll interval captures the first render's closure, where `quote` is
+  // forever null — a ref is what actually knows whether data ever arrived,
+  // so one failed poll can't throw the error box over a live price.
+  const hasQuote = useRef(false);
   const { has, toggle } = useWatchlist();
 
   const load = async () => {
-    const data = await fetchJson<LiveQuote>(apiUrl(`/api/quote/${id}`));
+    const data = await fetchJson<LiveQuote>(apiUrl(`/api/quote/${encodeURIComponent(String(id))}`));
     if (data?.success) {
+      hasQuote.current = true;
       setQuote(data);
       setFailed(false);
       // First load decides the tab; later polls must not yank the user off
       // the exchange they chose.
       setExchange((chosen) => chosen || (data.exchanges?.[0]?.exchange ?? data.exchange ?? 'NSE'));
-    } else if (!quote) {
+    } else if (!hasQuote.current) {
       setFailed(true);
     }
   };
@@ -114,12 +119,22 @@ export default function WatchLiveScreen() {
   const signed = (value: number | null | undefined, suffix = '') =>
     value == null ? '—' : `${value >= 0 ? '+' : ''}${value}${suffix}`;
 
+  // A price can be null mid-session (pre-open, suspended trade) even though
+  // the quote as a whole succeeded — render a dash, never crash on toFixed.
+  const rupees = (value: number | null | undefined) =>
+    typeof value === 'number' && Number.isFinite(value) ? `₹${value.toFixed(2)}` : '—';
+
   // The selected tab's own book: NSE tab shows NSE's, BSE tab BSE's. The
-  // flat `depth` is what older backend responses carried.
-  const depthShown = shown
+  // flat `depth` is what older backend responses carried. A book without
+  // both level arrays would crash the table, so it does not qualify.
+  const depthCandidate = shown
     ? quote?.depths?.[shown.exchange] ??
       (quote?.depth && quote.depth.exchange === shown.exchange ? quote.depth : null)
     : null;
+  const depthShown =
+    depthCandidate && Array.isArray(depthCandidate.bid) && Array.isArray(depthCandidate.ask)
+      ? depthCandidate
+      : null;
 
   const baseSymbol = (symbol?: string) => String(symbol || '').replace(/\.(NS|BO)$/, '');
 
@@ -188,7 +203,7 @@ export default function WatchLiveScreen() {
                         {tab.exchange}
                       </Text>
                       <Text style={[styles.exchangePrice, { color: tabTone }]}>
-                        {tab.currentPrice.toFixed(2)}
+                        {rupees(tab.currentPrice).replace('₹', '')}
                       </Text>
                       <Text style={[styles.exchangeChange, { color: tabTone }]}>
                         {signed(tab.change)} ({signed(tab.changePct, '%')})
@@ -220,7 +235,7 @@ export default function WatchLiveScreen() {
             </TouchableOpacity>
 
             <View style={styles.priceCard}>
-              <Text style={styles.bigPrice}>₹{shown.currentPrice.toFixed(2)}</Text>
+              <Text style={styles.bigPrice}>{rupees(shown.currentPrice)}</Text>
               <View style={[styles.changeChip, { backgroundColor: `${tone}22` }]}>
                 {up ? <TrendingUp size={16} color={tone} /> : <TrendingDown size={16} color={tone} />}
                 <Text style={[styles.changeText, { color: tone }]}>
@@ -265,7 +280,7 @@ export default function WatchLiveScreen() {
                 ))}
                 <View style={[styles.depthRow, styles.depthTotalRow]}>
                   <Text style={[styles.depthCell, styles.depthLeft, styles.depthBuy, styles.depthTotal]}>
-                    {depthShown.totalBuyQty.toLocaleString('en-IN')}
+                    {(depthShown.totalBuyQty ?? 0).toLocaleString('en-IN')}
                   </Text>
                   <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthTotal, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
                     Total
@@ -274,7 +289,7 @@ export default function WatchLiveScreen() {
                     Shares
                   </Text>
                   <Text style={[styles.depthCell, styles.depthRightAlign, styles.depthSell, styles.depthTotal]}>
-                    {depthShown.totalSellQty.toLocaleString('en-IN')}
+                    {(depthShown.totalSellQty ?? 0).toLocaleString('en-IN')}
                   </Text>
                 </View>
               </View>

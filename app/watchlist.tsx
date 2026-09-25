@@ -33,13 +33,18 @@ export default function WatchlistScreen() {
   const load = useCallback(async () => {
     const results = await Promise.all(
       watchlist.map(async (item) => {
-        const data = await fetchJson<any>(apiUrl(`/api/quote/${item.id}`));
+        const data = await fetchJson<any>(apiUrl(`/api/quote/${encodeURIComponent(item.id)}`));
         return data?.success
           ? [item.id, { currentPrice: data.currentPrice, change: data.change, changePct: data.changePct }]
           : null;
       })
     );
-    setQuotes(Object.fromEntries(results.filter(Boolean) as [string, RowQuote][]));
+    // Merge over what is already showing: one timed-out refresh must not
+    // knock a row's price back to the "…" placeholder.
+    setQuotes((prev) => ({
+      ...prev,
+      ...Object.fromEntries(results.filter(Boolean) as [string, RowQuote][]),
+    }));
   }, [watchlist]);
 
   useEffect(() => {
@@ -65,7 +70,9 @@ export default function WatchlistScreen() {
         <View style={styles.rowRight}>
           {quote ? (
             <>
-              <Text style={styles.rowPrice}>₹{quote.currentPrice.toFixed(2)}</Text>
+              <Text style={styles.rowPrice}>
+                {typeof quote.currentPrice === 'number' ? `₹${quote.currentPrice.toFixed(2)}` : '—'}
+              </Text>
               <Text style={[styles.rowChange, { color: tone }]}>
                 {quote.change != null && quote.change >= 0 ? '+' : ''}
                 {quote.change ?? '—'} ({quote.changePct ?? '—'}%)

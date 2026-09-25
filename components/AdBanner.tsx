@@ -18,20 +18,35 @@ const PROD_UNITS = {
 };
 
 let ads: any = null;
-let initialised = false;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   ads = require('react-native-google-mobile-ads');
-  if (!initialised && ads?.default) {
-    initialised = true;
-    ads.default().initialize().catch(() => {});
-  }
 } catch {
   ads = null;
 }
 
+let initialised = false;
+const RETRY_MS = 60 * 1000;
+
 export function AdBanner() {
   const [failed, setFailed] = useState(false);
+
+  // SDK startup belongs on first render, not on the import path of every
+  // screen that might show a banner.
+  React.useEffect(() => {
+    if (!initialised && ads?.default) {
+      initialised = true;
+      ads.default().initialize().catch(() => {});
+    }
+  }, []);
+
+  // One no-fill at cold start must not blank the slot for the whole
+  // session — these tab screens stay mounted as long as the app lives.
+  React.useEffect(() => {
+    if (!failed) return;
+    const timer = setTimeout(() => setFailed(false), RETRY_MS);
+    return () => clearTimeout(timer);
+  }, [failed]);
 
   if (!ads?.BannerAd || Platform.OS === 'web' || failed) return null;
 

@@ -87,11 +87,6 @@ export function removePAN(pan: string) {
   persist(savedPANs);
 }
 
-export function updatePANName(pan: string, newName: string) {
-  publish(savedPANs.map((saved) => (saved.pan === pan ? { ...saved, name: newName } : saved)));
-  persist(savedPANs);
-}
-
 /**
  * Edit an entry in place — the PAN itself included, for fixing a typo in a
  * saved number. Refuses a new PAN that would collide with a different entry.
@@ -122,5 +117,5 @@ export function useSavedPANs() {
     };
   }, []);
 
-  return { savedPANs: pans, addPAN, removePAN, updatePANName, updatePAN };
+  return { savedPANs: pans, addPAN, removePAN, updatePAN };
 }

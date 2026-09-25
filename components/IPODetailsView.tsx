@@ -108,17 +108,27 @@ export function IPODetailsView({ ipo, onClose }: IPODetailsViewProps) {
     } as never);
   };
 
+  /** "22 Sep 2026" -> a Date; Hermes's Date() cannot be trusted with it. */
+  const parseAllotmentDate = (value: string): Date | null => {
+    const match = String(value || '').match(/(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})/);
+    if (!match) return null;
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const month = months.indexOf(match[2].slice(0, 3).toLowerCase());
+    if (month < 0) return null;
+    return new Date(Number(match[3]), month, Number(match[1]), 23, 59);
+  };
+
   /** What the button says when there is nothing to check yet. */
   const waitingLabel = () => {
     if (findingRegistrar) return 'Checking availability…';
+    if (!ipo.allotment) return 'Allotment not out yet';
     // "Allotment on <date>" is a promise about the future; once that date
     // has passed and the registrar still has not listed the company, the
-    // honest reading is that the result just is not out yet.
-    const allotmentDate = new Date(ipo.allotment || '');
-    if (ipo.allotment && !Number.isNaN(allotmentDate.getTime()) && allotmentDate > new Date()) {
-      return `Allotment on ${ipo.allotment}`;
-    }
-    return 'Allotment not out yet';
+    // honest reading is that the result just is not out yet. A date that
+    // cannot be parsed keeps the promise wording rather than guessing.
+    const allotmentDate = parseAllotmentDate(ipo.allotment);
+    if (allotmentDate && allotmentDate < new Date()) return 'Allotment not out yet';
+    return `Allotment on ${ipo.allotment}`;
   };
 
   // A different IPO in the same sheet must not keep the last one's message
