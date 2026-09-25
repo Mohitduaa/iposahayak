@@ -1,10 +1,9 @@
 export default {
-  // AdMob application ids. These are Google's official TEST app ids so the
-  // build runs today; replace both with the real ones from the AdMob console
-  // (Apps → App settings → App ID, "ca-app-pub-5670091853008171~…") before a
-  // store release, or ads will stay test ads.
+  // AdMob application ids. Android carries the real app id; iOS keeps
+  // Google's TEST app id until the app exists in the AdMob console for iOS —
+  // replace it there before any App Store release.
   "react-native-google-mobile-ads": {
-    android_app_id: "ca-app-pub-3940256099942544~3347511713",
+    android_app_id: "ca-app-pub-5670091853008171~2396523308",
     ios_app_id: "ca-app-pub-3940256099942544~1458002511",
   },
   expo: {
